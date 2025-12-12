@@ -1,4 +1,4 @@
-import { authenticateToken } from "../helper/authHelper.js";
+import { authenticateToken } from "../helpers/authHelper.js";
 import jwt from "jsonwebtoken";
 
 export const verifyUser = (req, res, next) => {
@@ -15,10 +15,12 @@ export const verifyUser = (req, res, next) => {
   if (result.success === false) return res.status(401).json({ message: result.error });
 
   if (result.status === "refresh") {
+    req.status = "refresh";
     req.refreshToken = result.refreshToken;
     req.accessToken = result.accessToken;
     req.user = jwt.decode(result.accessToken);
   } else if (result.status === "ok") {
+    req.status = "ok";
     req.user = result.payload;
   }
 

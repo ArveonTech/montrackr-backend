@@ -13,14 +13,18 @@ app.use(express.json());
 app.use("/auth", authRoute);
 
 app.get("/", (req, res) => {
-  res.json({ message: "Backend up and running 🚀" });
+  res.json({ message: "Backend up and running" });
 });
 
 app.use((err, req, res, next) => {
   const status = err.statusCode || 500;
   console.info(err);
   const message = err.isOperational ? err.message : "Something went wrong";
-  res.status(status).json({ message });
+  res.status(status).json({
+    status: "error",
+    code: status,
+    message: message,
+  });
 });
 
 const PORT = process.env.PORT || 3000;

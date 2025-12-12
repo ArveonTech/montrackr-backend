@@ -3,6 +3,11 @@ import User from "../models/user.js";
 import { google } from "googleapis";
 import { createAccessToken, createRefreshToken } from "../utils/authToken.js";
 import { AuthError } from "../helpers/errorHandler.js";
+import { validateUser } from "../utils/validateUser.js";
+import { addUserAccountGoogle, addUserAccountVerified } from "../controllers/userControllers.js";
+import { requestOTPRegister, verifyTokenOTP } from "../utils/OTP.js";
+import { userByEmail, userByID } from "../middleware/userInDB.js";
+import { verifyUser } from "../middleware/authMiddleware.js";
 
 const app = express();
 app.use(express.json());
@@ -19,6 +24,7 @@ const authorizationUrl = oauth2Client.generateAuthUrl({
 
 const authRoute = express.Router();
 
+// Login or Register with Google
 authRoute.get(`/google`, (req, res) => {
   try {
     res.redirect(authorizationUrl);
@@ -27,9 +33,10 @@ authRoute.get(`/google`, (req, res) => {
   }
 });
 
-authRoute.get(`/google/callback`, async (req, res) => {
+authRoute.get(`/google/callback`, async (req, res, next) => {
   try {
     const { code } = req.query;
+
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
 
@@ -45,18 +52,17 @@ authRoute.get(`/google/callback`, async (req, res) => {
 
     const user = await User.findOne({ email: data?.email });
 
-    if (!user) {
-      res.status(401).json({
+    if (!user)
+      return res.status(401).json({
         status: "register",
         user: {
           email: data.email,
-          name: data.name,
+          username: data.name,
         },
       });
-    }
 
     const userObj = user.toObject();
-    const { password, balance, currency, otp, createdAt, updatedAt, ...payloadJWT } = userObj;
+    const { password, balance, currency, otp, createdAt, secret, __v, isVerified, updatedAt, ...payloadJWT } = userObj;
 
     const accessToken = createAccessToken(payloadJWT);
     const refreshToken = createRefreshToken(payloadJWT);
@@ -72,17 +78,450 @@ authRoute.get(`/google/callback`, async (req, res) => {
     res.status(200).json({
       status: "success",
       auth: "login",
-      user: {
-        email: user.email,
+      data: {
+        _id: user?._id,
         username: user.username,
+        email: user.email,
+        profile: user.profile,
       },
       tokens: {
         accessToken,
       },
     });
   } catch (error) {
-    throw new AuthError("Error callback google", 500);
+    next(new AuthError(`Error callback google ${error.message}`, 500));
   }
+});
+
+authRoute.post(`/set-password`, async (req, res, next) => {
+  try {
+    const { dataUser } = req.body;
+
+    if (!dataUser.email || !dataUser.username || !dataUser.password)
+      return res.status(404).json({
+        status: "error",
+        code: 404,
+        message: "Data not found",
+      });
+
+    const dataUserDB = await User.findOne({ email: dataUser?.email });
+
+    if (dataUserDB)
+      return res.status(409).json({
+        status: "error",
+        code: 409,
+        message: "User is already exists",
+      });
+
+    const userDBComplate = await addUserAccountGoogle(dataUser);
+
+    const userObj = userDBComplate.toObject();
+    const { password, balance, currency, otp, createdAt, secret, __v, isVerified, updatedAt, ...payloadJWT } = userObj;
+
+    const accessToken = createAccessToken(payloadJWT);
+    const refreshToken = createRefreshToken(payloadJWT);
+
+    res.cookie("refresh-token", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 168,
+      path: "/",
+    });
+
+    res.status(201).json({
+      status: "success",
+      code: 201,
+      message: "Register google success",
+      data: {
+        otp: true,
+      },
+      tokens: {
+        accessToken,
+      },
+    });
+  } catch (error) {
+    next(new AuthError(`Error set password: ${error.message}`, 400));
+  }
+});
+
+// Register manual
+
+authRoute.post(`/register`, async (req, res, next) => {
+  try {
+    const { dataUser } = req.body;
+
+    if (!dataUser.email || !dataUser.username || !dataUser.password)
+      return res.status(404).json({
+        status: "error",
+        code: 404,
+        message: "Data not found",
+      });
+
+    // validate user
+    const { username, email, password } = dataUser;
+    const errorMsgValidateUser = validateUser({ username, email, password });
+    if (errorMsgValidateUser) {
+      return res.status(400).json({
+        status: "error",
+        code: 400,
+        message: errorMsgValidateUser,
+      });
+    }
+
+    // account is arlready and verified
+    const userIsVerified = await User.findOne({ email: dataUser?.email, isVerified: true });
+    if (userIsVerified) {
+      return res.status(409).json({
+        status: "error",
+        code: 409,
+        message: "Email already exists",
+      });
+    }
+
+    // account is already but not verified
+    const userNotVerified = await User.findOne({ email: dataUser?.email, isVerified: false });
+    if (userNotVerified) {
+      return res.status(200).json({
+        status: "pending",
+        code: 200,
+        message: "Account exists but not verified. Please verify your email.",
+        data: {
+          _id: userNotVerified?._id,
+          username: userNotVerified?.username,
+          email: userNotVerified?.email,
+        },
+      });
+    }
+
+    const newAccountVerified = await addUserAccountVerified(dataUser);
+
+    res.status(201).json({
+      status: "success",
+      code: 200,
+      message: "Account verified created",
+      data: {
+        _id: newAccountVerified?._id,
+        username: newAccountVerified?.username,
+        email: newAccountVerified?.email,
+      },
+    });
+  } catch (error) {
+    next(new AuthError(`Error verify user: ${error.message}`, 400));
+  }
+});
+
+authRoute.post(`/login`, userByEmail, async (req, res, next) => {
+  try {
+    const dataUserDB = req.dataUserDB;
+    const { dataUser } = req.body;
+
+    if (dataUser?.password !== dataUserDB.password)
+      return res.status(401).json({
+        status: "error",
+        code: 401,
+        message: "Wrong password",
+      });
+
+    const userObj = dataUserDB.toObject();
+    const { password, balance, currency, otp, createdAt, secret, __v, isVerified, updatedAt, ...payloadJWT } = userObj;
+
+    const accessToken = createAccessToken(payloadJWT);
+    const refreshToken = createRefreshToken(payloadJWT);
+
+    res.cookie("refresh-token", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 168,
+      path: "/",
+    });
+
+    res.status(202).json({
+      status: "success",
+      code: 202,
+      message: "OTP register success",
+      data: {
+        otp: true,
+      },
+      tokens: {
+        accessToken,
+      },
+    });
+  } catch (error) {
+    next(new AuthError(`Error login: ${error.message}`, 400));
+  }
+});
+
+authRoute.post(`/request-otp/register`, userByID, async (req, res, next) => {
+  try {
+    const dataUserDB = req.dataUserDB;
+
+    const resutlSendMessageOTP = await requestOTPRegister(dataUserDB.secret, dataUserDB.email);
+
+    res.status(202).json({
+      status: "success",
+      code: 202,
+      message: "OTP register success",
+      data: {
+        otp: resutlSendMessageOTP,
+      },
+    });
+  } catch (error) {
+    next(new AuthError(`Error request otp register: ${error.message}`, 400));
+  }
+});
+
+authRoute.post(`/verify-otp/register`, userByID, async (req, res, next) => {
+  try {
+    const { dataUser } = req.body;
+    const dataUserDB = req.dataUserDB;
+
+    const resultVerifyTokenOTP = verifyTokenOTP(dataUser.token, dataUserDB.secret);
+
+    if (resultVerifyTokenOTP === false)
+      return res.status(422).json({
+        status: "error",
+        code: 422,
+        message: "OTP register invalid",
+        data: {
+          otp: false,
+        },
+      });
+
+    const userDBComplate = await User.findOneAndUpdate({ _id }, { isVerified: true, balance: 0, profile: "profile-1", currency: "IDR" });
+
+    if (!userDBComplate)
+      return res.status(400).json({
+        status: "error",
+        code: 400,
+        message: "OTP register invalid",
+        data: {
+          otp: false,
+        },
+      });
+
+    const userObj = userDBComplate.toObject();
+    const { password, balance, currency, otp, createdAt, secret, __v, isVerified, updatedAt, ...payloadJWT } = userObj;
+
+    const accessToken = createAccessToken(payloadJWT);
+    const refreshToken = createRefreshToken(payloadJWT);
+
+    res.cookie("refresh-token", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 168,
+      path: "/",
+    });
+
+    res.status(202).json({
+      status: "success",
+      code: 202,
+      message: "OTP register success",
+      data: {
+        otp: true,
+      },
+      tokens: {
+        accessToken,
+      },
+    });
+  } catch (error) {
+    next(new AuthError(`Error request otp register: ${error.message}`, 400));
+  }
+});
+
+authRoute.post(`/request-otp/forgot-password`, userByEmail, async (req, res, next) => {
+  try {
+    const dataUserDB = req.dataUserDB;
+
+    const resutlSendMessageOTP = await requestOTPRegister(dataUserDB.secret, email);
+
+    res.status(202).json({
+      status: "success",
+      code: 202,
+      message: "OTP forgot password success",
+      data: {
+        otp: resutlSendMessageOTP,
+      },
+    });
+  } catch (error) {
+    next(new AuthError(`Error request otp forgot password: ${error.message}`, 400));
+  }
+});
+
+authRoute.post(`/verify-otp/forgot-password`, userByEmail, async (req, res, next) => {
+  try {
+    const { dataUser } = req.body;
+    const dataUserDB = req.dataUserDB;
+
+    const resultVerifyTokenOTP = verifyTokenOTP(dataUser?.token, dataUserDB.secret);
+
+    if (resultVerifyTokenOTP === false)
+      return res.status(422).json({
+        status: "error",
+        code: 422,
+        message: "OTP forgot password invalid",
+        data: {
+          otp: false,
+        },
+      });
+
+    res.status(200).json({
+      status: "success",
+      code: 200,
+      message: "OTP forgot password success",
+      data: {
+        otp: true,
+        _id: dataUserDB?._id,
+        username: dataUserDB?.username,
+        email: dataUserDB?.email,
+      },
+    });
+  } catch (error) {
+    next(new AuthError(`Error request otp forgot password: ${error.message}`, 400));
+  }
+});
+
+authRoute.post(`/forgot-password`, userByID, async (req, res) => {
+  try {
+    const dataUserDB = req.dataUserDB;
+    const { dataUser } = req.body;
+
+    const resultUpdateForgotPassword = await User.findOneAndUpdate({ _id: dataUserDB._id }, { password: dataUser?.newPassword });
+
+    if (!resultUpdateForgotPassword)
+      return res.status(400).json({
+        status: "error",
+        code: 400,
+        message: "Error update password",
+        data: {
+          otp: false,
+        },
+      });
+
+    res.status(200).json({
+      status: "success",
+      code: 200,
+      message: "Update password success",
+      data: {
+        _id: dataUserDB?._id,
+        username: dataUserDB?.username,
+        email: dataUserDB?.email,
+      },
+    });
+  } catch (error) {
+    next(new AuthError(`Error update forgot password: ${error.message}`, 400));
+  }
+});
+
+authRoute.post(`/request-otp/change-password`, userByEmail, async (req, res, next) => {
+  try {
+    const dataUserDB = req.dataUserDB;
+
+    const resutlSendMessageOTP = await requestOTPRegister(dataUserDB.secret, email);
+
+    res.status(202).json({
+      status: "success",
+      code: 202,
+      message: "OTP change password success",
+      data: {
+        otp: resutlSendMessageOTP,
+      },
+    });
+  } catch (error) {
+    next(new AuthError(`Error requ est otp change password: ${error.message}`, 400));
+  }
+});
+
+authRoute.post(`/verify-otp/change-password`, userByEmail, async (req, res, next) => {
+  try {
+    const { dataUser } = req.body;
+    const dataUserDB = req.dataUserDB;
+
+    const resultVerifyTokenOTP = verifyTokenOTP(dataUser.token, dataUserDB.secret);
+
+    if (resultVerifyTokenOTP === false)
+      return res.status(422).json({
+        status: "error",
+        code: 422,
+        message: "OTP change password invalid",
+        data: {
+          otp: false,
+        },
+      });
+
+    res.status(200).json({
+      status: "success",
+      code: 200,
+      message: "OTP change password success",
+      data: {
+        otp: true,
+        _id: dataUserDB?._id,
+        username: dataUserDB?.username,
+        email: dataUserDB?.email,
+      },
+    });
+  } catch (error) {
+    next(new AuthError(`Error request otp change password: ${error.message}`, 400));
+  }
+});
+
+authRoute.post(`/forgot-password`, userByID, async (req, res) => {
+  try {
+    const dataUserDB = req.dataUserDB;
+    const { dataUser } = req.body;
+
+    const resultUpdateForgotPassword = await User.findOneAndUpdate({ _id: dataUserDB._id }, { password: dataUser?.newPassword });
+
+    if (!resultUpdateForgotPassword)
+      return res.status(400).json({
+        status: "error",
+        code: 400,
+        message: "Error update password",
+        data: {
+          otp: false,
+        },
+      });
+
+    res.status(200).json({
+      status: "success",
+      code: 200,
+      message: "Update password success",
+      data: {
+        _id: dataUserDB?._id,
+        username: dataUserDB?.username,
+        email: dataUserDB?.email,
+      },
+    });
+  } catch (error) {
+    next(new AuthError(`Error update forgot password: ${error.message}`, 400));
+  }
+});
+
+authRoute.post(`/refresh`, verifyUser, (req, res) => {
+  const { accessToken, refreshToken, status } = req;
+
+  if (status === "refresh")
+    return res.cookie("refresh-token", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 168,
+      path: "/",
+    });
+
+  res.status(202).json({
+    status: "success",
+    code: 202,
+    message: "OTP register success",
+    data: {
+      otp: true,
+    },
+    tokens: {
+      accessToken,
+    },
+  });
 });
 
 export default authRoute;
