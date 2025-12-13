@@ -1,6 +1,4 @@
 import { authenticator } from "otplib";
-import { AuthError } from "../helpers/errorHandler.js";
-import User from "../models/user.js";
 import { sendMeessage } from "./email.js";
 authenticator.options = { step: 60 };
 
@@ -19,7 +17,7 @@ export const verifyTokenOTP = (token, secret) => {
   }
 };
 
-export const requestOTPRegister = async (secret, email) => {
+export const requestOTP = async (secret, email) => {
   try {
     const resultGenerateTokenOTP = generateTokenOTP(secret);
 

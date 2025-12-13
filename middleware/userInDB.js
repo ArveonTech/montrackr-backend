@@ -4,7 +4,14 @@ export const userByID = async (req, res, next) => {
   try {
     const { dataUser } = req.body;
 
-    const dataUserDB = await User.findById(dataUser?._id);
+    if (!dataUser)
+      return res.status(404).json({
+        status: "error",
+        code: 404,
+        message: "Data not found",
+      });
+
+    const dataUserDB = await User.findById(dataUser._id);
 
     if (!dataUserDB)
       return res.status(404).json({

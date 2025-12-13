@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export const sendMeessage = async (token, senderEmail, recipientEmail, expire) => {
+export const sendMeessage = async (token, recipientEmail, expire) => {
   try {
     const info = await transporter.sendMail({
       from: process.env.SENDER_EMAIL,
@@ -91,9 +91,6 @@ export const sendMeessage = async (token, senderEmail, recipientEmail, expire) =
 </html>
 `,
     });
-
-    console.log("Message sent: %s", info.messageId);
-    console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
 
     return info.messageId;
   } catch (error) {
