@@ -1,16 +1,20 @@
 import express from "express";
 import dotenv from "dotenv";
 import { connectDB } from "./database/db.js";
+import cookieParser from "cookie-parser";
 
 // routers
 import authRoute from "./routers/auth.route.js";
+import userRoute from "./routers/user.route.js";
 
 dotenv.config();
 const app = express();
 
 // Middleware
 app.use(express.json());
+app.use(cookieParser());
 app.use("/auth", authRoute);
+app.use("/user", userRoute);
 
 app.get("/", (req, res) => {
   res.json({ message: "Backend up and running" });

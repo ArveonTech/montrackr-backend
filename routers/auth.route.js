@@ -6,11 +6,12 @@ import { AuthError } from "../helpers/errorHandler.js";
 import { validateUser } from "../utils/validateUser.js";
 import { addUserAccountGoogle, addUserAccountVerified } from "../controllers/userControllers.js";
 import { requestOTP, verifyTokenOTP } from "../utils/OTP.js";
-import { userByEmail, userByID } from "../middleware/userInDB.js";
-import { verifyUser } from "../middleware/authMiddleware.js";
+import { userByEmail, userByID } from "../middleware/authMiddleware.js";
+import { verifyToken } from "../middleware/authMiddleware.js";
 
 const app = express();
 app.use(express.json());
+const authRoute = express.Router();
 
 const oauth2Client = new google.auth.OAuth2(process.env.CLIENT_ID, process.env.CLIENT_SECRET, "http://localhost:3000/auth/google/callback");
 
@@ -21,8 +22,6 @@ const authorizationUrl = oauth2Client.generateAuthUrl({
   scope: scopes,
   include_granted_scopes: true,
 });
-
-const authRoute = express.Router();
 
 // Login or Register with Google
 authRoute.get(`/google`, (req, res) => {
@@ -70,7 +69,7 @@ authRoute.get(`/google/callback`, async (req, res, next) => {
     res.cookie("refresh-token", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: process.env.SAMESITE,
       maxAge: 1000 * 60 * 60 * 168,
       path: "/",
     });
@@ -124,7 +123,7 @@ authRoute.post(`/set-password`, async (req, res, next) => {
     res.cookie("refresh-token", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: process.env.SAMESITE,
       maxAge: 1000 * 60 * 60 * 168,
       path: "/",
     });
@@ -267,7 +266,7 @@ authRoute.post(`/verify-otp/register`, userByID, async (req, res, next) => {
     res.cookie("refresh-token", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: process.env.SAMESITE,
       maxAge: 1000 * 60 * 60 * 168,
       path: "/",
     });
@@ -327,7 +326,7 @@ authRoute.post(`/login`, userByEmail, async (req, res, next) => {
     res.cookie("refresh-token", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: process.env.SAMESITE,
       maxAge: 1000 * 60 * 60 * 168,
       path: "/",
     });
@@ -404,7 +403,7 @@ authRoute.post(`/verify-otp/login`, userByID, async (req, res, next) => {
     res.cookie("refresh-token", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: process.env.SAMESITE,
       maxAge: 1000 * 60 * 60 * 168,
       path: "/",
     });
@@ -519,7 +518,7 @@ authRoute.post(`/forgot-password`, userByID, async (req, res) => {
     res.cookie("refresh-token", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: process.env.SAMESITE,
       maxAge: 1000 * 60 * 60 * 168,
       path: "/",
     });
@@ -596,7 +595,7 @@ authRoute.post(`/verify-otp/change-password`, userByEmail, async (req, res, next
   }
 });
 
-authRoute.post(`/change-password`, userByID, async (req, res) => {
+authRoute.post(`/verify-old-password`, userByID, async (req, res, next) => {
   try {
     const dataUserDB = req.dataUserDB;
     const { dataUser } = req.body;
@@ -611,19 +610,57 @@ authRoute.post(`/change-password`, userByID, async (req, res) => {
         },
       });
 
-    const resultChangeForgotPassword = await User.findOneAndUpdate({ _id: dataUserDB._id }, { password: dataUser?.newPassword });
-
-    if (!resultChangeForgotPassword)
-      return res.status(400).json({
+    if (dataUser.newPassword !== dataUserDB.password)
+      return res.status(401).json({
         status: "error",
-        code: 400,
-        message: "Error change password",
+        code: 401,
+        message: "Old password is incorrect.",
         data: {
           otp: false,
         },
       });
 
-    const userObj = resultChangeForgotPassword.toObject();
+    res.status(200).json({
+      status: "success",
+      code: 200,
+      message: "Verify old password success",
+      data: {
+        _id: dataUserDB?._id,
+        username: dataUserDB?.username,
+        email: dataUserDB?.email,
+        profile: dataUserDB?.profile,
+      },
+    });
+  } catch (error) {
+    next(new AuthError(`Error verify old password: ${error.message}`, 400));
+  }
+});
+
+authRoute.post(`/change-password`, userByID, async (req, res, next) => {
+  try {
+    const dataUserDB = req.dataUserDB;
+    const { dataUser } = req.body;
+
+    if (!dataUser._id || !dataUser.username || !dataUser.email || !dataUser.otp || !dataUser.profile)
+      return res.status(404).json({
+        status: "error",
+        code: 404,
+        message: "Data not found",
+        data: {
+          otp: false,
+        },
+      });
+
+    const resultChangePassword = await User.findOneAndUpdate({ _id: dataUserDB._id }, { password: dataUser?.newPassword });
+
+    if (!resultChangePassword)
+      return res.status(400).json({
+        status: "error",
+        code: 400,
+        message: "Error change password",
+      });
+
+    const userObj = resultChangePassword.toObject();
     const { password, balance, currency, otp, createdAt, secret, __v, isVerified, updatedAt, ...payloadJWT } = userObj;
 
     const accessToken = createAccessToken(payloadJWT);
@@ -632,7 +669,7 @@ authRoute.post(`/change-password`, userByID, async (req, res) => {
     res.cookie("refresh-token", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: process.env.SAMESITE,
       maxAge: 1000 * 60 * 60 * 168,
       path: "/",
     });
@@ -656,29 +693,50 @@ authRoute.post(`/change-password`, userByID, async (req, res) => {
   }
 });
 
-authRoute.post(`/refresh`, verifyUser, (req, res) => {
-  const { accessToken, refreshToken, status } = req;
+authRoute.post(`/refresh`, verifyToken, (req, res) => {
+  try {
+    const { accessToken, refreshToken, status } = req;
 
-  if (status === "refresh")
-    return res.cookie("refresh-token", refreshToken, {
+    if (status === "refresh")
+      res.cookie("refresh-token", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.SAMESITE,
+        maxAge: 1000 * 60 * 60 * 168,
+        path: "/",
+      });
+
+    res.status(202).json({
+      status: "success",
+      code: 202,
+      message: "OTP register success",
+      tokens: {
+        tokens: status === "refresh" ? { accessToken } : undefined,
+      },
+    });
+  } catch (error) {
+    next(new AuthError(`Error refresh token: ${error.message}`, 400));
+  }
+});
+
+authRoute.post(`/logout`, verifyToken, userByID, (req, res) => {
+  try {
+    res.clearCookie("refresh-token", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: process.env.SAMESITE,
       maxAge: 1000 * 60 * 60 * 168,
       path: "/",
     });
 
-  res.status(202).json({
-    status: "success",
-    code: 202,
-    message: "OTP register success",
-    data: {
-      otp: true,
-    },
-    tokens: {
-      accessToken,
-    },
-  });
+    res.status(204).json({
+      status: "success",
+      code: 204,
+      message: "Logout success",
+    });
+  } catch (error) {
+    next(new AuthError(`Error logout: ${error.message}`, 400));
+  }
 });
 
 export default authRoute;
