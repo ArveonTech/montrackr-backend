@@ -4,8 +4,9 @@ import { connectDB } from "./database/db.js";
 import cookieParser from "cookie-parser";
 
 // routers
-import authRoute from "./routers/auth.route.js";
-import userRoute from "./routers/user.route.js";
+import authRoute from "./routers/auth.routes.js";
+import usersRoute from "./routers/users.routes.js";
+import transactionsRoute from "./routers/transactions.routes.js";
 
 dotenv.config();
 const app = express();
@@ -14,7 +15,8 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use("/auth", authRoute);
-app.use("/user", userRoute);
+app.use("/users", usersRoute);
+app.use("/transactions", transactionsRoute);
 
 app.get("/", (req, res) => {
   res.json({ message: "Backend up and running" });

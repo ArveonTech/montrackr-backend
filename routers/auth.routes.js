@@ -248,7 +248,14 @@ authRoute.post(`/verify-otp/register`, userByID, async (req, res, next) => {
         },
       });
 
-    const userDBComplate = await User.findOneAndUpdate({ _id: dataUserDB._id }, { isVerified: true, balance: 0, profile: "profile-1", currency: "IDR" });
+    const userDBComplate = await User.findOneAndUpdate(
+      { _id: dataUserDB._id },
+      { isVerified: true, balance: 0, profile: "profile-1", currency: "IDR" },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
     if (!userDBComplate)
       return res.status(400).json({
@@ -343,6 +350,7 @@ authRoute.post(`/login`, userByEmail, async (req, res, next) => {
       },
       tokens: {
         accessToken,
+        refreshToken,
       },
     });
   } catch (error) {
@@ -385,7 +393,14 @@ authRoute.post(`/verify-otp/login`, userByID, async (req, res, next) => {
         },
       });
 
-    const userDBComplate = await User.findOneAndUpdate({ _id: dataUserDB._id }, { isVerified: true });
+    const userDBComplate = await User.findOneAndUpdate(
+      { _id: dataUserDB._id },
+      { isVerified: true },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
     if (!userDBComplate)
       return res.status(400).json({
@@ -497,7 +512,14 @@ authRoute.post(`/forgot-password`, userByID, async (req, res) => {
         },
       });
 
-    const resultUpdateForgotPassword = await User.findOneAndUpdate({ _id: dataUserDB._id }, { password: dataUser?.newPassword });
+    const resultUpdateForgotPassword = await User.findOneAndUpdate(
+      { _id: dataUserDB._id },
+      { password: dataUser?.newPassword },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
     if (!resultUpdateForgotPassword)
       return res.status(400).json({
@@ -651,7 +673,14 @@ authRoute.post(`/change-password`, userByID, async (req, res, next) => {
         },
       });
 
-    const resultChangePassword = await User.findOneAndUpdate({ _id: dataUserDB._id }, { password: dataUser?.newPassword });
+    const resultChangePassword = await User.findOneAndUpdate(
+      { _id: dataUserDB._id },
+      { password: dataUser?.newPassword },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
     if (!resultChangePassword)
       return res.status(400).json({

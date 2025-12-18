@@ -8,9 +8,9 @@ const app = express();
 
 app.use(express.json());
 
-const userRoute = express.Router();
+const usersRoute = express.Router();
 
-userRoute.post(`/me`, verifyToken, verifyUser, async (req, res, next) => {
+usersRoute.post(`/me`, verifyToken, verifyUser, async (req, res, next) => {
   try {
     const { accessToken, refreshToken, status, user } = req;
 
@@ -42,12 +42,19 @@ userRoute.post(`/me`, verifyToken, verifyUser, async (req, res, next) => {
   }
 });
 
-userRoute.post(`/change-profile`, verifyToken, verifyUser, async (req, res, next) => {
+usersRoute.patch(`/change-profile`, verifyToken, verifyUser, async (req, res, next) => {
   try {
     const { user } = req;
     const { fieldUser, value } = req.body;
 
-    const resultUpdateUser = await User.findOneAndUpdate({ _id: user._id }, { [fieldUser]: value });
+    const resultUpdateUser = await User.findOneAndUpdate(
+      { _id: user._id },
+      { [fieldUser]: value },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
     const userObj = resultUpdateUser.toObject();
     const { password, balance, currency, otp, createdAt, secret, __v, isVerified, updatedAt, ...payloadJWT } = userObj;
@@ -82,4 +89,4 @@ userRoute.post(`/change-profile`, verifyToken, verifyUser, async (req, res, next
   }
 });
 
-export default userRoute;
+export default usersRoute;

@@ -54,6 +54,20 @@ export const verifyUser = async (req, res, next) => {
   next();
 };
 
+export const verifyOwnership = async (req, res, next) => {
+  const { user } = req;
+  const { dataActionTransactions } = req.body;
+
+  if (user._id !== dataActionTransactions.user_id)
+    return res.status(403).json({
+      status: "error",
+      code: 403,
+      message: "You don't have access",
+    });
+
+  next();
+};
+
 export const userByID = async (req, res, next) => {
   try {
     const { dataUser } = req.body;

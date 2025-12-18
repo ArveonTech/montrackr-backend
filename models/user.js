@@ -7,7 +7,7 @@ const userSchema = new Schema(
     password: { type: mongoose.Schema.Types.String, required: true },
     email: { type: mongoose.Schema.Types.String, required: true },
     profile: { type: mongoose.Schema.Types.String },
-    balance: { type: mongoose.Schema.Types.Number },
+    balance: { type: mongoose.Schema.Types.Int32 },
     currency: { type: mongoose.Schema.Types.String },
     isVerified: { type: mongoose.Schema.Types.Boolean },
     secret: { type: mongoose.Schema.Types.String },

@@ -9,15 +9,23 @@ export class DatabaseError extends Error {
 export class AuthError extends Error {
   constructor(message, statusCode) {
     super(message);
-     this.statusCode = statusCode;
-     this.isOperational = true;
+    this.statusCode = statusCode;
+    this.isOperational = true;
   }
 }
 
 export class UserError extends Error {
   constructor(message, statusCode) {
     super(message);
-     this.statusCode = statusCode;
-     this.isOperational = true;
+    this.statusCode = statusCode;
+    this.isOperational = true;
+  }
+}
+
+export class TransactionsError extends Error {
+  constructor(message, statusCode) {
+    super(message);
+    this.statusCode = statusCode;
+    this.isOperational = true;
   }
 }
