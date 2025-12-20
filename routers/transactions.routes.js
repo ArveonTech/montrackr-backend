@@ -14,6 +14,7 @@ app.use(express.json());
 
 const transactionsRoute = express.Router();
 
+// add transactions
 transactionsRoute.post(``, verifyToken, verifyUser, validationTransactions, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
@@ -49,6 +50,7 @@ transactionsRoute.post(``, verifyToken, verifyUser, validationTransactions, asyn
   }
 });
 
+//get transactions filter
 transactionsRoute.get(``, verifyToken, verifyUser, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
@@ -98,6 +100,7 @@ transactionsRoute.get(``, verifyToken, verifyUser, async (req, res, next) => {
   }
 });
 
+// get one transactions
 transactionsRoute.get(`/:id`, verifyToken, verifyUser, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
@@ -118,14 +121,21 @@ transactionsRoute.get(`/:id`, verifyToken, verifyUser, async (req, res, next) =>
   }
 });
 
+// update transactions
 transactionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
   try {
     const idTransactions = req.params.id;
-    const { dataActionTransactions } = req.body;
     const dataUserDB = req.dataUserDB;
+
+    const { dataActionTransactions } = req.body;
     const dataOld = await Transaction.findById(idTransactions);
 
-    let resultActionBalanceUser = null;
+    if (!dataOld)
+      return res.status(404).json({
+        status: "error",
+        code: 404,
+        message: "Transaction not found",
+      });
 
     const resultUpdateTransaction = await Transaction.findOneAndUpdate(
       { _id: idTransactions, user_id: dataUserDB._id },
@@ -143,18 +153,16 @@ transactionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, async 
       }
     );
 
-    if (!resultUpdateTransaction)
-      return res.status(404).json({
-        status: "error",
-        code: 404,
-        message: "Failed to update transaction",
-      });
+    if (!resultUpdateTransaction) throw new Error(`Failed to update transaction`);
+
+    let resultActionBalanceUser = null;
 
     if (dataOld.amount !== resultUpdateTransaction.amount || dataOld.type !== resultUpdateTransaction.type) {
       if (dataOld.type !== resultUpdateTransaction.type) {
         rollbackBalance(dataUserDB._id, resultUpdateTransaction.type, dataOld.type, dataOld.amount, resultUpdateTransaction.amount);
       } else {
         const delta = resultUpdateTransaction.amount - dataOld.amount;
+
         resultActionBalanceUser = await User.findByIdAndUpdate(
           dataUserDB._id,
           { $inc: { balance: resultUpdateTransaction.type === "income" ? +delta : -delta } },
@@ -164,12 +172,7 @@ transactionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, async 
           }
         );
 
-        if (!resultActionBalanceUser)
-          return res.status(404).json({
-            status: "error",
-            code: 404,
-            message: "Failed to update balance",
-          });
+        if (!resultActionBalanceUser) throw new Error(`Failed to update balance for transactions`);
       }
     }
 
@@ -186,23 +189,29 @@ transactionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, async 
   }
 });
 
+// delete transactions
 transactionsRoute.delete(`/:id`, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
     const idTransactions = req.params.id;
     const dataTransactions = await Transaction.findById(idTransactions);
+
+    if (!dataTransactions)
+      return res.status(404).json({
+        status: "error",
+        code: 404,
+        message: "Transaction not found",
+      });
+
     const amountTransactions = dataTransactions.amount;
 
     const resultDeleteTransactions = await Transaction.deleteOne({ _id: idTransactions, user_id: dataUserDB._id });
 
-    if (resultDeleteTransactions.deletedCount === 0)
-      return res.status(404).json({
-        status: "error",
-        code: 404,
-        message: "Failed to delete transaction",
-      });
+    if (resultDeleteTransactions.deletedCount === 0) throw new Error(`Failed to delete transaction`);
 
     const deleteBalance = await User.findByIdAndUpdate(dataUserDB._id, { $inc: { balance: dataTransactions.type === "income" ? -amountTransactions : +amountTransactions } });
+
+    if (deleteBalance.deletedCount === 0) throw new Error(`Failed to delete amount transaction in balance`);
 
     res.status(204).json({
       status: "success",
