@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 const { Schema, model } = mongoose;
 
-const transactionsSchema = new Schema(
+const transactionSchema = new Schema(
   {
     user_id: { type: mongoose.Schema.Types.ObjectId, required: true },
     amount: { type: mongoose.Schema.Types.Int32, required: true },
@@ -19,5 +19,5 @@ const transactionsSchema = new Schema(
   }
 );
 
-const Transactions = mongoose.model("Transactions", transactionsSchema);
-export default Transactions;
+const Transaction = mongoose.model("Transaction", transactionSchema);
+export default Transaction;

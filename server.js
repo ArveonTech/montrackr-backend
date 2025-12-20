@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import authRoute from "./routers/auth.routes.js";
 import usersRoute from "./routers/users.routes.js";
 import transactionsRoute from "./routers/transactions.routes.js";
+import analyticsRoute from "./routers/goal.routes.js";
 
 dotenv.config();
 const app = express();
@@ -17,6 +18,7 @@ app.use(cookieParser());
 app.use("/auth", authRoute);
 app.use("/users", usersRoute);
 app.use("/transactions", transactionsRoute);
+app.use("/analytics", analyticsRoute);
 
 app.get("/", (req, res) => {
   res.json({ message: "Backend up and running" });
