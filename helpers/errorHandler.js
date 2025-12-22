@@ -37,3 +37,11 @@ export class GoalError extends Error {
     this.isOperational = true;
   }
 }
+
+export class SubscriptionError extends Error {
+  constructor(message, statusCode) {
+    super(message);
+    this.statusCode = statusCode;
+    this.isOperational = true;
+  }
+}

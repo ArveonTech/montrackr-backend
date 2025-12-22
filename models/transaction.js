@@ -4,6 +4,7 @@ const { Schema, model } = mongoose;
 const transactionSchema = new Schema(
   {
     user_id: { type: mongoose.Schema.Types.ObjectId, required: true },
+    title: { type: mongoose.Schema.Types.String, required: true },
     amount: { type: mongoose.Schema.Types.Int32, required: true },
     currency: { type: mongoose.Schema.Types.String, required: true },
     type: { type: mongoose.Schema.Types.String, required: true },

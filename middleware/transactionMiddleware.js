@@ -25,6 +25,7 @@ export const validationTransactions = (req, res, next) => {
   const amountNumber = Number(normalizedAmount);
 
   req.dataTransactions = {
+    title: rest.title,
     amount: amountNumber,
     type: normalizedType,
     category: normalizedCate,

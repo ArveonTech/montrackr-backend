@@ -22,7 +22,8 @@ transactionsRoute.post(``, verifyToken, verifyUser, validationTransactions, asyn
 
     const resultAddTransactions = await Transaction.create({
       user_id: dataUserDB._id,
-      amount: Number(dataTransactions.amount),
+      title: dataTransactions.title,
+      amount: dataTransactions.amount,
       currency: dataUserDB.currency,
       type: dataTransactions.type,
       category: dataTransactions.category,
@@ -71,7 +72,7 @@ transactionsRoute.get(``, verifyToken, verifyUser, async (req, res, next) => {
     };
 
     if (startDate && endDate) {
-      query.createdAt = {
+      query.date = {
         $gte: startDate,
         $lte: endDate,
       };
@@ -108,6 +109,13 @@ transactionsRoute.get(`/:id`, verifyToken, verifyUser, async (req, res, next) =>
 
     const resultGetTransaction = await Transaction.findOne({ _id: idTransactions, user_id: dataUserDB._id });
 
+    if (!resultGetTransaction)
+      return res.status(404).json({
+        status: "error",
+        code: 404,
+        message: "Transaction not found",
+      });
+
     res.status(200).json({
       status: "success",
       code: 200,
@@ -140,6 +148,7 @@ transactionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, async 
     const resultUpdateTransaction = await Transaction.findOneAndUpdate(
       { _id: idTransactions, user_id: dataUserDB._id },
       {
+        title: dataActionTransactions.title,
         amount: dataActionTransactions.amount,
         type: dataActionTransactions.type,
         category: dataActionTransactions.category,

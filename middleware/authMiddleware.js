@@ -1,6 +1,9 @@
 import { authenticateToken } from "../helpers/authHelper.js";
 import jwt from "jsonwebtoken";
 import User from "../models/user.js";
+import Transaction from "../models/transaction.js";
+import Goal from "../models/goal.js";
+import Subscription from "../models/subscription.js";
 
 export const verifyToken = (req, res, next) => {
   // ambil access token di header
@@ -95,7 +98,7 @@ export const userByID = async (req, res, next) => {
 
     next();
   } catch (error) {
-    next(new Error(`Error request otp: ${error.message}`));
+    next(new Error(`Error search user by id: ${error.message}`));
   }
 };
 
@@ -120,6 +123,85 @@ export const userByEmail = async (req, res, next) => {
 
     next();
   } catch (error) {
-    next(new Error(`Error request otp: ${error.message}`));
+    next(new Error(`Error search user by email: ${error.message}`));
+  }
+};
+
+export const verifyGoalExist = async (req, res, next) => {
+  try {
+    const { dataUserDB } = req;
+
+    const resultGetGoal = await Goal.findOne({ user_id: dataUserDB._id, status: "active" });
+
+    if (!resultGetGoal)
+      res.status(404).json({
+        status: "error",
+        code: 404,
+        message: "Goal not found",
+      });
+
+    next();
+  } catch (error) {
+    next(new Error(`Error verify goal exist: ${error.message}`));
+  }
+};
+
+export const verifyTransactionGoalExist = async (req, res, next) => {
+  try {
+    const { dataUserDB } = req;
+    const goalId = req.params.id;
+
+    const resultTransactionGetGoal = await Transaction.findOne({ _id: goalId, user_id: dataUserDB._id });
+
+    if (!resultTransactionGetGoal)
+      res.status(404).json({
+        status: "error",
+        code: 404,
+        message: "Transaction goal not found",
+      });
+
+    next();
+  } catch (error) {
+    next(new Error(`Error verify transaction goal exist: ${error.message}`));
+  }
+};
+
+export const verifySubscriptionExist = async (req, res, next) => {
+  try {
+    const { dataUserDB } = req;
+    const subscriptionId = req.params.id;
+
+    const resultGetSubscription = await Subscription.findOne({ _id: subscriptionId, user_id: dataUserDB._id });
+
+    if (!resultGetSubscription)
+      res.status(404).json({
+        status: "error",
+        code: 404,
+        message: "Subscription not found",
+      });
+
+    next();
+  } catch (error) {
+    next(new Error(`Error verify subscription exist: ${error.message}`));
+  }
+};
+
+export const verifyTransactionSubscriptionExist = async (req, res, next) => {
+  try {
+    const { dataUserDB } = req;
+    const subscriptionId = req.params.id;
+
+    const resultTransactionGetSubscription = await Transaction.findOne({ _id: subscriptionId, user_id: dataUserDB._id });
+
+    if (!resultTransactionGetSubscription)
+      res.status(404).json({
+        status: "error",
+        code: 404,
+        message: "Transaction subscription not found",
+      });
+
+    next();
+  } catch (error) {
+    next(new Error(`Error verify transaction subscription exist: ${error.message}`));
   }
 };
