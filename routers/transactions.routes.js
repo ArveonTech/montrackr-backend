@@ -36,7 +36,7 @@ transactionsRoute.post(``, verifyToken, verifyUser, validationTransactions, asyn
 
     if (!resultAddTransactions) throw new Error(`Failed to add transaction`);
 
-    const resultActionBalanceUser = await User.findByIdAndUpdate(dataUserDB._id, { $inc: { balance: dataTransactions.type === "income" ? +Number(dataTransactions.amount) : -Number(dataTransactions.amount) } });
+    const resultActionBalanceUser = await User.findByIdAndUpdate(dataUserDB._id, { $inc: { balance: dataTransactions.type === "income" ? +Number(amountNumber) : -Number(amountNumber) } });
 
     if (!resultActionBalanceUser) throw new Error(`Failed to add balance`);
 
@@ -55,21 +55,46 @@ transactionsRoute.post(``, verifyToken, verifyUser, validationTransactions, asyn
 transactionsRoute.get(``, verifyToken, verifyUser, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
-    const { filters } = req.body;
-    const { type, category, date } = filters;
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const searchQuery = req.query.searchQuery || "";
+    const type = req.query.type || "";
+    const category = req.query.category || "";
+
+    const month = req.query.month || "";
+    const year = req.query.year || "";
+
+    const sortBy = req.query.sortBy || "latest";
 
     let startDate = null;
     let endDate = null;
 
-    if (date.month && date.year) {
-      ({ startDate, endDate } = monthYearToISO(date.month, date.year));
-    } else if (date.year) {
-      ({ startDate, endDate } = yearToISO(date.year));
+    const startIndexPage = (page - 1) * limit;
+    let limitPage = 0;
+
+    if (isNaN(limit) || limit > 10 || limit < 1) {
+      limitPage = 10;
+    } else {
+      limitPage = limit;
     }
+
+    if (month && year) {
+      ({ startDate, endDate } = monthYearToISO(month, year));
+    } else if (year) {
+      ({ startDate, endDate } = yearToISO(year));
+    }
+
+    const sort = {};
 
     const query = {
       user_id: dataUserDB._id,
     };
+
+    if (searchQuery) {
+      query.title = new RegExp(searchQuery, "i");
+    }
 
     if (startDate && endDate) {
       query.date = {
@@ -86,13 +111,23 @@ transactionsRoute.get(``, verifyToken, verifyUser, async (req, res, next) => {
       query.category = category;
     }
 
-    const resultFIlteringTransaction = await Transaction.find(query);
+    if (sortBy === "oldest") {
+      sort.updatedAt = 1;
+    } else if (sortBy === "latest") {
+      sort.updatedAt = -1;
+    }
+
+    const resultFIlteringTransaction = await Transaction.find(query).sort(sort).skip(startIndexPage).limit(limitPage);
+    const countTransactions = await Transaction.countDocuments(query);
 
     res.status(200).json({
       status: "success",
       code: 200,
       message: "Get transaction success",
       data: {
+        total: countTransactions,
+        page,
+        limit: limitPage,
         items: resultFIlteringTransaction,
       },
     });
@@ -135,8 +170,11 @@ transactionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, async 
     const idTransactions = req.params.id;
     const dataUserDB = req.dataUserDB;
 
-    const { dataActionTransactions } = req.body;
+    const { dataTransactions } = req.body;
     const dataOld = await Transaction.findById(idTransactions);
+
+    const normalizedAmount = dataTransactions.amount.replace(/[^\d]/g, "");
+    const amountNumber = Number(normalizedAmount);
 
     if (!dataOld)
       return res.status(404).json({
@@ -148,13 +186,13 @@ transactionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, async 
     const resultUpdateTransaction = await Transaction.findOneAndUpdate(
       { _id: idTransactions, user_id: dataUserDB._id },
       {
-        title: dataActionTransactions.title,
-        amount: dataActionTransactions.amount,
-        type: dataActionTransactions.type,
-        category: dataActionTransactions.category,
-        paymentMethod: dataActionTransactions.paymentMethod,
-        date: dataActionTransactions.date,
-        description: dataActionTransactions.description,
+        title: dataTransactions.title,
+        amount: amountNumber,
+        type: dataTransactions.type,
+        category: dataTransactions.category,
+        paymentMethod: dataTransactions.paymentMethod,
+        date: dataTransactions.date,
+        description: dataTransactions.description,
       },
       {
         new: true,
@@ -212,13 +250,14 @@ transactionsRoute.delete(`/:id`, verifyToken, verifyUser, verifyOwnership, async
         message: "Transaction not found",
       });
 
-    const amountTransactions = dataTransactions.amount;
+    const normalizedAmount = dataTransactions.amount.replace(/[^\d]/g, "");
+    const amountNumber = Number(normalizedAmount);
 
     const resultDeleteTransactions = await Transaction.deleteOne({ _id: idTransactions, user_id: dataUserDB._id });
 
     if (resultDeleteTransactions.deletedCount === 0) throw new Error(`Failed to delete transaction`);
 
-    const deleteBalance = await User.findByIdAndUpdate(dataUserDB._id, { $inc: { balance: dataTransactions.type === "income" ? -amountTransactions : +amountTransactions } });
+    const deleteBalance = await User.findByIdAndUpdate(dataUserDB._id, { $inc: { balance: dataTransactions.type === "income" ? -amountNumber : +amountNumber } });
 
     if (deleteBalance.deletedCount === 0) throw new Error(`Failed to delete amount transaction in balance`);
 

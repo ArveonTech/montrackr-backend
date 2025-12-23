@@ -59,9 +59,9 @@ export const verifyUser = async (req, res, next) => {
 
 export const verifyOwnership = async (req, res, next) => {
   const { user } = req;
-  const { dataActionTransactions } = req.body;
+  const { dataTransactions } = req.body;
 
-  if (user._id !== dataActionTransactions.user_id)
+  if (user._id !== dataTransactions.user_id)
     return res.status(403).json({
       status: "error",
       code: 403,
@@ -183,25 +183,5 @@ export const verifySubscriptionExist = async (req, res, next) => {
     next();
   } catch (error) {
     next(new Error(`Error verify subscription exist: ${error.message}`));
-  }
-};
-
-export const verifyTransactionSubscriptionExist = async (req, res, next) => {
-  try {
-    const { dataUserDB } = req;
-    const subscriptionId = req.params.id;
-
-    const resultTransactionGetSubscription = await Transaction.findOne({ _id: subscriptionId, user_id: dataUserDB._id });
-
-    if (!resultTransactionGetSubscription)
-      res.status(404).json({
-        status: "error",
-        code: 404,
-        message: "Transaction subscription not found",
-      });
-
-    next();
-  } catch (error) {
-    next(new Error(`Error verify transaction subscription exist: ${error.message}`));
   }
 };

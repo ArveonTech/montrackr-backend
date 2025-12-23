@@ -2,7 +2,6 @@ import User from "../models/user.js";
 
 export const rollbackBalance = async (idUser, typeUpdate, typeOld, amountOld, amountNew) => {
   try {
-    console.info(typeUpdate, amountOld, amountNew);
     const deleteBalanceOld = await User.findByIdAndUpdate(idUser, { $inc: { balance: typeOld === "income" ? -amountOld : +amountOld } });
     if (!deleteBalanceOld) throw new Error(`Failed to rollback balance`);
 

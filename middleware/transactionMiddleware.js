@@ -3,8 +3,8 @@ const categoryList = ["essentials", "lifestyle", "health", "family & social", "f
 const paymentMethodList = ["cash", "bank", "debit card", "credit card", "e-wallet", "qris"];
 
 export const validationTransactions = (req, res, next) => {
-  const { formDataTransactions } = req.body;
-  const { type, category, paymentMethod, amount, ...rest } = formDataTransactions;
+  const { dataTransactions } = req.body;
+  const { type, category, paymentMethod, amount, ...rest } = dataTransactions;
   const normalizedType = type.toLowerCase();
   const normalizedCate = category.toLowerCase();
   const normalizedPaymentMethod = paymentMethod.toLowerCase();

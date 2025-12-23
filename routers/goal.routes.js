@@ -14,7 +14,13 @@ const goalsRoute = express.Router();
 goalsRoute.post(``, verifyToken, verifyUser, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
-    const { dataGoal } = req.body;
+    const { dataTransactions } = req.body;
+
+    const normalizedAmountTargetGoal = dataTransactions.targetGoal.replace(/[^\d]/g, "");
+    const amountNumberTargetGoal = Number(normalizedAmountTargetGoal);
+
+    const normalizedAmountCurrentBalance = dataTransactions.currentBalance.replace(/[^\d]/g, "");
+    const amountNumberCurrentBalance = Number(normalizedAmountCurrentBalance);
 
     const chackGoalUser = await Goal.findOne({ user_id: dataUserDB._id, status: "active" });
 
@@ -28,11 +34,11 @@ goalsRoute.post(``, verifyToken, verifyUser, async (req, res, next) => {
 
     const resultAddGoal = await Goal.create({
       user_id: dataUserDB._id,
-      title: dataGoal.title,
+      title: dataTransactions.title,
       status: "active",
       currency: dataUserDB.currency,
-      targetGoal: Number(dataGoal.targetGoal),
-      currentBalance: Number(dataGoal.currentBalance),
+      targetGoal: amountNumberTargetGoal,
+      currentBalance: amountNumberCurrentBalance,
     });
 
     if (!resultAddGoal) throw new Error(`Failed to add goal`);
@@ -40,7 +46,7 @@ goalsRoute.post(``, verifyToken, verifyUser, async (req, res, next) => {
     const resultAddContributionToGoal = await Transaction.create({
       user_id: dataUserDB._id,
       title: resultAddGoal.title,
-      amount: dataGoal.currentBalance,
+      amount: amountNumberCurrentBalance,
       currency: dataUserDB.currency,
       type: "goal",
       category: null,
@@ -95,13 +101,16 @@ goalsRoute.get(``, verifyToken, verifyUser, async (req, res, next) => {
 goalsRoute.patch(``, verifyToken, verifyUser, verifyOwnership, verifyGoalExist, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
-    const { dataActionTransactions } = req.body;
+    const { dataTransactions } = req.body;
+
+    const normalizedAmount = dataTransactions.targetGoal.replace(/[^\d]/g, "");
+    const amountNumberTargetGoal = Number(normalizedAmount);
 
     const resultUpdateGoalUser = await Goal.findOneAndUpdate(
       { user_id: dataUserDB._id, status: "active" },
       {
-        title: dataActionTransactions.title,
-        targetGoal: dataActionTransactions.targetGoal,
+        title: dataTransactions.title,
+        targetGoal: amountNumberTargetGoal,
       },
       {
         new: true,
@@ -160,11 +169,14 @@ goalsRoute.delete(``, verifyToken, verifyUser, verifyOwnership, verifyGoalExist,
 goalsRoute.patch(`/contribute`, verifyToken, verifyUser, verifyOwnership, verifyGoalExist, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
-    const { dataActionTransactions } = req.body;
+    const { dataTransactions } = req.body;
+
+    const normalizedAmount = dataTransactions.amount.replace(/[^\d]/g, "");
+    const amountNumber = Number(normalizedAmount);
 
     const resultAddContributionGoal = await Goal.findOneAndUpdate(
       { user_id: dataUserDB._id, status: "active" },
-      { $inc: { currentBalance: dataActionTransactions.amount } },
+      { $inc: { currentBalance: amountNumber } },
       {
         new: true,
         runValidators: true,
@@ -174,7 +186,7 @@ goalsRoute.patch(`/contribute`, verifyToken, verifyUser, verifyOwnership, verify
     const resultAddTransactionContributionGoal = await Transaction.create({
       user_id: dataUserDB._id,
       title: resultAddContributionGoal.title,
-      amount: dataActionTransactions.amount,
+      amount: amountNumber,
       currency: dataUserDB.currency,
       type: "goal",
       category: null,
@@ -205,14 +217,17 @@ goalsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, verifyGoalExi
   try {
     const goalId = req.params.id;
     const { dataUserDB } = req;
-    const { dataActionTransactions } = req.body;
+    const { dataTransactions } = req.body;
+
+    const normalizedAmount = dataTransactions.amount.replace(/[^\d]/g, "");
+    const amountNumber = Number(normalizedAmount);
 
     const dataTransactionsOldGoal = await Transaction.findOne({ _id: goalId, user_id: dataUserDB._id });
 
     const resultUpdateTransactionNewGoal = await Transaction.findOneAndUpdate(
       { _id: goalId, user_id: dataUserDB._id },
       {
-        amount: dataActionTransactions.amount,
+        amount: amountNumber,
       },
       {
         new: true,

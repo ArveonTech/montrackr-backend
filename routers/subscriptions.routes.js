@@ -1,10 +1,11 @@
 import express from "express";
-import { verifyOwnership, verifyToken, verifyUser } from "../middleware/authMiddleware.js";
 import { SubscriptionError } from "../helpers/errorHandler.js";
 import Transaction from "../models/transaction.js";
 import { validationTransactionsSubcriptions } from "../middleware/subscriptionMiddleware.js";
 import Subscription from "../models/subscription.js";
+import { verifyOwnership, verifySubscriptionExist, verifyToken, verifyUser } from "../middleware/authMiddleware.js";
 import { nextPayment } from "../utils/nextPayment.js";
+import User from "../models/user.js";
 
 const app = express();
 
@@ -16,7 +17,7 @@ const subscriptionsRoute = express.Router();
 subscriptionsRoute.post(``, verifyToken, verifyUser, validationTransactionsSubcriptions, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
-    const { dataTransactions } = req.dataTransactions;
+    const dataTransactions = req.dataTransactions;
 
     const resultAddSubscription = await Subscription.create({
       user_id: dataUserDB._id,
@@ -30,11 +31,12 @@ subscriptionsRoute.post(``, verifyToken, verifyUser, validationTransactionsSubcr
       status: "active",
     });
 
-    if (!resultAddGoal) throw new Error(`Failed to add subscription`);
+    if (!resultAddSubscription) throw new Error(`Failed to add subscription`);
 
     const resultAddTransactionSubscription = await Transaction.create({
       user_id: dataUserDB._id,
-      amount: dataGoal.currentBalance,
+      title: resultAddSubscription.title,
+      amount: resultAddSubscription.amount,
       currency: dataUserDB.currency,
       type: "expense",
       category: null,
@@ -46,6 +48,10 @@ subscriptionsRoute.post(``, verifyToken, verifyUser, validationTransactionsSubcr
     });
 
     if (!resultAddTransactionSubscription) throw new Error(`Failed to add transaction subscription`);
+
+    const resultActionBalanceUser = await User.findByIdAndUpdate(dataUserDB._id, { $inc: { balance: -dataTransactions.amount } });
+
+    if (!resultActionBalanceUser) throw new Error(`Failed to reduce balance`);
 
     res.status(200).json({
       status: "success",
@@ -63,7 +69,20 @@ subscriptionsRoute.get(``, verifyToken, verifyUser, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
 
-    const resultGetAllSubscription = await Subscription.find({ user_id: dataUserDB._id });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const startIndexPage = (page - 1) * limit;
+    let limitPage = 0;
+
+    if (isNaN(limit) || limit > 10 || limit < 1) {
+      limitPage = 10;
+    } else {
+      limitPage = limit;
+    }
+
+    const resultGetAllSubscription = await Subscription.find({ user_id: dataUserDB._id }).skip(startIndexPage).limit(limitPage);
+    const countTransactions = await Subscription.countDocuments({ user_id: dataUserDB._id });
 
     if (!resultGetAllSubscription)
       res.status(404).json({
@@ -77,6 +96,9 @@ subscriptionsRoute.get(``, verifyToken, verifyUser, async (req, res, next) => {
       code: 200,
       message: "Get subscriptions success",
       data: {
+        total: countTransactions,
+        page,
+        limit: limitPage,
         items: resultGetAllSubscription,
       },
     });
@@ -94,7 +116,7 @@ subscriptionsRoute.get(`/:id`, verifyToken, verifyUser, async (req, res, next) =
     const resultGetSubscription = await Subscription.findOne({ _id: subscriptionId, user_id: dataUserDB._id });
 
     if (!resultGetSubscription)
-      res.status(404).json({
+      return res.status(404).json({
         status: "error",
         code: 404,
         message: "subscription not found",
@@ -103,7 +125,7 @@ subscriptionsRoute.get(`/:id`, verifyToken, verifyUser, async (req, res, next) =
     res.status(200).json({
       status: "success",
       code: 200,
-      message: "Get all subscription success",
+      message: "Get subscription success",
       data: {
         items: resultGetSubscription,
       },
@@ -114,27 +136,42 @@ subscriptionsRoute.get(`/:id`, verifyToken, verifyUser, async (req, res, next) =
 });
 
 // update subscription
-subscriptionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
+subscriptionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, verifySubscriptionExist, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
-    const { dataActionTransactions } = req.body;
+    const { dataTransactions } = req.body;
     const subscriptionId = req.params.id;
 
-    const resultUpdateSubscription = await Subscription.findOneAndUpdate(
-      { _id: subscriptionId, user_id: dataUserDB._id },
-      {
-        title: dataActionTransactions.title,
-        amount: dataActionTransactions.amount,
-        interval: dataActionTransactions.interval,
-        paymentMethod: dataActionTransactions.paymentMethod,
-        nextPayment: nextPayment(dataActionTransactions.interval),
-        status: dataActionTransactions.status,
-      },
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+    const normalizedAmount = dataTransactions.amount.replace(/[^\d]/g, "");
+    const amountNumber = Number(normalizedAmount);
+
+    const subscriptionOld = await Subscription.findOne({ _id: subscriptionId, user_id: dataUserDB._id });
+
+    let resultUpdateSubscription = null;
+
+    if (dataTransactions.date !== subscriptionOld.date || dataTransactions.interval !== subscriptionOld.interval) {
+      resultUpdateSubscription = await Subscription.findOneAndUpdate(
+        { _id: subscriptionId, user_id: dataUserDB._id },
+        { title: dataTransactions.title, amount: amountNumber, nextPayment: nextPayment(dataTransactions.interval, dataTransactions.date), paymentMethod: dataTransactions.paymentMethod },
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
+    } else {
+      resultUpdateSubscription = await Subscription.findOneAndUpdate(
+        { _id: subscriptionId, user_id: dataUserDB._id },
+        {
+          title: dataTransactions.title,
+          amount: amountNumber,
+          paymentMethod: dataTransactions.paymentMethod,
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
+    }
 
     if (!resultUpdateSubscription) throw new Error(`Failed to update subscription`);
 
@@ -147,32 +184,32 @@ subscriptionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, async
       },
     });
   } catch (error) {
-    next(new TransactionsError(`Error update subscription: ${error.message}`, 400));
+    next(new SubscriptionError(`Error update subscription: ${error.message}`, 400));
   }
 });
 
 // delete subscription
-subscriptionsRoute.delete(`/:id`, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
+subscriptionsRoute.delete(`/:id`, verifyToken, verifyUser, verifyOwnership, verifySubscriptionExist, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
 
-    const resultDeleteSubscription = await Subscription.deleteOne({ user_id: dataUserDB._id });
+    const resultDeleteSubscription = await Subscription.findOne({ _id: req.params.id, user_id: dataUserDB._id }, { status: "canceled", endedAt: new Date() });
 
     if (resultDeleteSubscription.deletedCount === 0)
-      return res.status(404).json({
+      return res.status(400).json({
         status: "error",
-        code: 404,
-        message: "Failed to delete subscription",
+        code: 400,
+        message: "Failed to cancel subscription",
       });
 
     res.status(204).json({
       status: "success",
       code: 204,
-      message: "Delete subscription success",
+      message: "Cancel subscription success",
       data: {},
     });
   } catch (error) {
-    next(new TransactionsError(`Error delete subscription: ${error.message}`, 400));
+    next(new SubscriptionError(`Error cancel subscription: ${error.message}`, 400));
   }
 });
 
