@@ -36,7 +36,7 @@ transactionsRoute.post(``, verifyToken, verifyUser, validationTransactions, asyn
 
     if (!resultAddTransactions) throw new Error(`Failed to add transaction`);
 
-    const resultActionBalanceUser = await User.findByIdAndUpdate(dataUserDB._id, { $inc: { balance: dataTransactions.type === "income" ? +Number(amountNumber) : -Number(amountNumber) } });
+    const resultActionBalanceUser = await User.findByIdAndUpdate(dataUserDB._id, { $inc: { balance: dataTransactions.type === "income" ? +Number(dataTransactions.amount) : -Number(dataTransactions.amount) } });
 
     if (!resultActionBalanceUser) throw new Error(`Failed to add balance`);
 
@@ -249,14 +249,11 @@ transactionsRoute.delete(`/:id`, verifyToken, verifyUser, verifyOwnership, async
         message: "Transaction not found",
       });
 
-    const normalizedAmount = dataTransactions.amount.replace(/[^\d]/g, "");
-    const amountNumber = Number(normalizedAmount);
-
     const resultDeleteTransactions = await Transaction.deleteOne({ _id: idTransactions, user_id: dataUserDB._id });
 
     if (resultDeleteTransactions.deletedCount === 0) throw new Error(`Failed to delete transaction`);
 
-    const deleteBalance = await User.findByIdAndUpdate(dataUserDB._id, { $inc: { balance: dataTransactions.type === "income" ? -amountNumber : +amountNumber } });
+    const deleteBalance = await User.findByIdAndUpdate(dataUserDB._id, { $inc: { balance: dataTransactions.type === "income" ? -dataTransactions.amount : +dataTransactions.amount } });
 
     if (deleteBalance.deletedCount === 0) throw new Error(`Failed to delete amount transaction in balance`);
 

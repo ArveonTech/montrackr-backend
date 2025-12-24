@@ -1,7 +1,7 @@
 import express from "express";
 import { SubscriptionError } from "../helpers/errorHandler.js";
 import Transaction from "../models/transaction.js";
-import { validationTransactionsSubcriptions } from "../middleware/subscriptionMiddleware.js";
+import { validationTransactionsSubcriptions, validationUpdateTransactionsSubcriptions } from "../middleware/subscriptionMiddleware.js";
 import Subscription from "../models/subscription.js";
 import { verifyOwnership, verifySubscriptionExist, verifyToken, verifyUser } from "../middleware/authMiddleware.js";
 import { nextPayment } from "../utils/nextPayment.js";
@@ -135,13 +135,20 @@ subscriptionsRoute.get(`/:id`, verifyToken, verifyUser, async (req, res, next) =
 });
 
 // update subscription
-subscriptionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, verifySubscriptionExist, validationTransactionsSubcriptions, async (req, res, next) => {
+subscriptionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, verifySubscriptionExist, validationUpdateTransactionsSubcriptions, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
     const dataTransactions = req.dataTransactions;
     const subscriptionId = req.params.id;
 
     const subscriptionOld = await Subscription.findOne({ _id: subscriptionId, user_id: dataUserDB._id });
+
+    if (subscriptionOld.status === "canceled")
+      return res.status(400).json({
+        status: "error",
+        code: 400,
+        message: "Subscription status is inactive",
+      });
 
     let resultUpdateSubscription = null;
 
