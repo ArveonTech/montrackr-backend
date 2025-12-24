@@ -134,7 +134,7 @@ export const verifyGoalExist = async (req, res, next) => {
     const resultGetGoal = await Goal.findOne({ user_id: dataUserDB._id, status: "active" });
 
     if (!resultGetGoal)
-      res.status(404).json({
+      return res.status(404).json({
         status: "error",
         code: 404,
         message: "Goal not found",
@@ -154,7 +154,7 @@ export const verifyTransactionGoalExist = async (req, res, next) => {
     const resultTransactionGetGoal = await Transaction.findOne({ _id: goalId, user_id: dataUserDB._id });
 
     if (!resultTransactionGetGoal)
-      res.status(404).json({
+      return res.status(404).json({
         status: "error",
         code: 404,
         message: "Transaction goal not found",
@@ -174,7 +174,7 @@ export const verifySubscriptionExist = async (req, res, next) => {
     const resultGetSubscription = await Subscription.findOne({ _id: subscriptionId, user_id: dataUserDB._id });
 
     if (!resultGetSubscription)
-      res.status(404).json({
+      return res.status(404).json({
         status: "error",
         code: 404,
         message: "Subscription not found",

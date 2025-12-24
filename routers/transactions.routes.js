@@ -44,7 +44,6 @@ transactionsRoute.post(``, verifyToken, verifyUser, validationTransactions, asyn
       status: "success",
       code: 200,
       message: "Add transactions success",
-      data: {},
     });
   } catch (error) {
     next(new TransactionsError(`Error add transaction: ${error.message}`, 400));

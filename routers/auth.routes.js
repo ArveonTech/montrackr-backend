@@ -148,7 +148,6 @@ authRoute.post(`/set-password`, async (req, res, next) => {
 });
 
 // Register manual
-
 authRoute.post(`/register`, async (req, res, next) => {
   try {
     const { dataUser } = req.body;

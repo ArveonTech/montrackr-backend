@@ -9,7 +9,7 @@ export const nextPayment = (interval, dateISO) => {
     const finalDay = Math.min(date.getDate(), maxDay);
 
     return new Date(date.getFullYear(), targetMonth, finalDay);
-  } else {
+  } else if (interval === "yearly") {
     const date = new Date(dateISO);
 
     const targetDate = date.getDate();

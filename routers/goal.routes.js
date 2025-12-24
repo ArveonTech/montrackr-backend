@@ -29,7 +29,6 @@ goalsRoute.post(``, verifyToken, verifyUser, async (req, res, next) => {
         status: "error",
         code: 409,
         message: "The goal is there",
-        data: {},
       });
 
     const resultAddGoal = await Goal.create({
@@ -50,7 +49,7 @@ goalsRoute.post(``, verifyToken, verifyUser, async (req, res, next) => {
       currency: dataUserDB.currency,
       type: "goal",
       category: null,
-      date: null,
+      date: new Date(),
       paymentMethod: null,
       description: null,
       goalId: resultAddGoal._id,
@@ -63,7 +62,6 @@ goalsRoute.post(``, verifyToken, verifyUser, async (req, res, next) => {
       status: "success",
       code: 200,
       message: "Add goal success",
-      data: {},
     });
   } catch (error) {
     next(new GoalError(`Error add goal: ${error.message}`, 400));
@@ -78,7 +76,7 @@ goalsRoute.get(``, verifyToken, verifyUser, async (req, res, next) => {
     const resultGetGoal = await Goal.findOne({ user_id: dataUserDB._id, status: "active" });
 
     if (!resultGetGoal)
-      res.status(404).json({
+      return res.status(404).json({
         status: "success",
         code: 404,
         message: "Goal not found",
@@ -158,7 +156,6 @@ goalsRoute.delete(``, verifyToken, verifyUser, verifyOwnership, verifyGoalExist,
       status: "success",
       code: 204,
       message: "Delete goal success",
-      data: {},
     });
   } catch (error) {
     next(new TransactionsError(`Error delete goal: ${error.message}`, 400));
@@ -190,7 +187,7 @@ goalsRoute.patch(`/contribute`, verifyToken, verifyUser, verifyOwnership, verify
       currency: dataUserDB.currency,
       type: "goal",
       category: null,
-      date: null,
+      date: new Date(),
       paymentMethod: null,
       description: null,
       goalId: resultAddContributionGoal._id,

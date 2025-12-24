@@ -57,7 +57,6 @@ subscriptionsRoute.post(``, verifyToken, verifyUser, validationTransactionsSubcr
       status: "success",
       code: 200,
       message: "Add subscription success",
-      data: {},
     });
   } catch (error) {
     next(new SubscriptionError(`Error add subscription: ${error.message}`, 400));
@@ -85,7 +84,7 @@ subscriptionsRoute.get(``, verifyToken, verifyUser, async (req, res, next) => {
     const countTransactions = await Subscription.countDocuments({ user_id: dataUserDB._id });
 
     if (!resultGetAllSubscription)
-      res.status(404).json({
+      return res.status(404).json({
         status: "error",
         code: 404,
         message: "Subscriptions not found",
@@ -136,14 +135,11 @@ subscriptionsRoute.get(`/:id`, verifyToken, verifyUser, async (req, res, next) =
 });
 
 // update subscription
-subscriptionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, verifySubscriptionExist, async (req, res, next) => {
+subscriptionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, verifySubscriptionExist, validationTransactionsSubcriptions, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
-    const { dataTransactions } = req.body;
+    const dataTransactions = req.dataTransactions;
     const subscriptionId = req.params.id;
-
-    const normalizedAmount = dataTransactions.amount.replace(/[^\d]/g, "");
-    const amountNumber = Number(normalizedAmount);
 
     const subscriptionOld = await Subscription.findOne({ _id: subscriptionId, user_id: dataUserDB._id });
 
@@ -152,7 +148,15 @@ subscriptionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, verif
     if (dataTransactions.date !== subscriptionOld.date || dataTransactions.interval !== subscriptionOld.interval) {
       resultUpdateSubscription = await Subscription.findOneAndUpdate(
         { _id: subscriptionId, user_id: dataUserDB._id },
-        { title: dataTransactions.title, amount: amountNumber, nextPayment: nextPayment(dataTransactions.interval, dataTransactions.date), paymentMethod: dataTransactions.paymentMethod },
+        {
+          title: dataTransactions.title,
+          amount: dataTransactions.amount,
+          interval: dataTransactions.interval,
+          date: dataTransactions.date,
+          nextPayment: nextPayment(dataTransactions.interval, dataTransactions.date || new Date()),
+          paymentMethod: dataTransactions.paymentMethod,
+          status: dataTransactions.status,
+        },
         {
           new: true,
           runValidators: true,
@@ -163,8 +167,9 @@ subscriptionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, verif
         { _id: subscriptionId, user_id: dataUserDB._id },
         {
           title: dataTransactions.title,
-          amount: amountNumber,
+          amount: dataTransactions.amount,
           paymentMethod: dataTransactions.paymentMethod,
+          status: dataTransactions.status,
         },
         {
           new: true,
@@ -188,12 +193,62 @@ subscriptionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, verif
   }
 });
 
+// subscription payment
+subscriptionsRoute.patch(`/payment/:id`, verifyToken, verifyUser, verifyOwnership, verifySubscriptionExist, async (req, res, next) => {
+  try {
+    const { dataUserDB } = req;
+    const subscriptionId = req.params.id;
+
+    const subscriptionDetail = await Subscription.findById(subscriptionId);
+
+    if (subscriptionDetail.status !== "active")
+      return res.status(400).json({
+        status: "error",
+        code: 400,
+        message: "Subscription status is inactive",
+      });
+
+    const resultPaymentSubscription = await User.findOneAndUpdate(
+      { _id: dataUserDB._id },
+      { $inc: { balance: -subscriptionDetail.amount } },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    const resultAddTransactionPaymentSubscription = await Transaction.create({
+      user_id: dataUserDB._id,
+      title: subscriptionDetail.title,
+      amount: subscriptionDetail.amount,
+      currency: dataUserDB.currency,
+      type: "expense",
+      category: null,
+      date: new Date(),
+      paymentMethod: subscriptionDetail.paymentMethod,
+      description: null,
+      goalId: null,
+      subsId: subscriptionDetail._id,
+    });
+
+    if (!resultAddTransactionPaymentSubscription) throw new Error(`Failed to add transaction subscription`);
+
+    res.status(200).json({
+      status: "success",
+      code: 200,
+      message: "Payment subscription success",
+    });
+  } catch (error) {
+    next(new SubscriptionError(`Error payment subscription: ${error.message}`, 400));
+  }
+});
+
 // delete subscription
 subscriptionsRoute.delete(`/:id`, verifyToken, verifyUser, verifyOwnership, verifySubscriptionExist, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
 
-    const resultDeleteSubscription = await Subscription.findOne({ _id: req.params.id, user_id: dataUserDB._id }, { status: "canceled", endedAt: new Date() });
+    const resultDeleteSubscription = await Subscription.findOneAndUpdate({ _id: req.params.id, user_id: dataUserDB._id }, { status: "canceled", endedAt: new Date() });
 
     if (resultDeleteSubscription.deletedCount === 0)
       return res.status(400).json({
@@ -206,7 +261,6 @@ subscriptionsRoute.delete(`/:id`, verifyToken, verifyUser, verifyOwnership, veri
       status: "success",
       code: 204,
       message: "Cancel subscription success",
-      data: {},
     });
   } catch (error) {
     next(new SubscriptionError(`Error cancel subscription: ${error.message}`, 400));
