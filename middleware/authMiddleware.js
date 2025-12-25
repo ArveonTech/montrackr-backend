@@ -4,6 +4,7 @@ import User from "../models/user.js";
 import Transaction from "../models/transaction.js";
 import Goal from "../models/goal.js";
 import Subscription from "../models/subscription.js";
+import Budget from "../models/budget.js";
 
 export const verifyToken = (req, res, next) => {
   // ambil access token di header
@@ -183,5 +184,24 @@ export const verifySubscriptionExist = async (req, res, next) => {
     next();
   } catch (error) {
     next(new Error(`Error verify subscription exist: ${error.message}`));
+  }
+};
+
+export const verifyBudgetExist = async (req, res, next) => {
+  try {
+    const { dataUserDB } = req;
+
+    const resultGetBudget = await Budget.findOne({ user_id: dataUserDB._id });
+
+    if (!resultGetBudget)
+      return res.status(404).json({
+        status: "error",
+        code: 404,
+        message: "Budget not found",
+      });
+
+    next();
+  } catch (error) {
+    next(new Error(`Error verify budget exist: ${error.message}`));
   }
 };

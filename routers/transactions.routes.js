@@ -15,7 +15,7 @@ app.use(express.json());
 const transactionsRoute = express.Router();
 
 // add transactions
-transactionsRoute.post(``, verifyToken, verifyUser, validationTransactions, async (req, res, next) => {
+transactionsRoute.post(``, verifyToken, verifyUser, verifyOwnership, validationTransactions, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
     const dataTransactions = req.dataTransactions;
@@ -164,16 +164,12 @@ transactionsRoute.get(`/:id`, verifyToken, verifyUser, async (req, res, next) =>
 });
 
 // update transactions
-transactionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
+transactionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, validationTransactions, async (req, res, next) => {
   try {
     const idTransactions = req.params.id;
-    const dataUserDB = req.dataUserDB;
+    const { dataUserDB, dataTransactions } = req;
 
-    const { dataTransactions } = req.body;
     const dataOld = await Transaction.findById(idTransactions);
-
-    const normalizedAmount = dataTransactions.amount.replace(/[^\d]/g, "");
-    const amountNumber = Number(normalizedAmount);
 
     if (!dataOld)
       return res.status(404).json({
@@ -186,11 +182,11 @@ transactionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, async 
       { _id: idTransactions, user_id: dataUserDB._id },
       {
         title: dataTransactions.title,
-        amount: amountNumber,
+        amount: dataTransactions.amount,
         type: dataTransactions.type,
         category: dataTransactions.category,
-        paymentMethod: dataTransactions.paymentMethod,
         date: dataTransactions.date,
+        paymentMethod: dataTransactions.paymentMethod,
         description: dataTransactions.description,
       },
       {

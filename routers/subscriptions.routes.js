@@ -14,7 +14,7 @@ app.use(express.json());
 const subscriptionsRoute = express.Router();
 
 // add subscription
-subscriptionsRoute.post(``, verifyToken, verifyUser, validationTransactionsSubcriptions, async (req, res, next) => {
+subscriptionsRoute.post(``, verifyToken, verifyUser, verifyOwnership, validationTransactionsSubcriptions, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
     const dataTransactions = req.dataTransactions;

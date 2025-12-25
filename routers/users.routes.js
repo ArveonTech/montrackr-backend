@@ -1,5 +1,5 @@
 import express from "express";
-import { verifyToken, verifyUser } from "../middleware/authMiddleware.js";
+import { verifyOwnership, verifyToken, verifyUser } from "../middleware/authMiddleware.js";
 import { UserError } from "../helpers/errorHandler.js";
 import { createAccessToken, createRefreshToken } from "../utils/authToken.js";
 import User from "../models/user.js";
@@ -10,7 +10,7 @@ app.use(express.json());
 
 const usersRoute = express.Router();
 
-usersRoute.post(`/me`, verifyToken, verifyUser, async (req, res, next) => {
+usersRoute.post(`/me`, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
   try {
     const { accessToken, refreshToken, status, user } = req;
 
@@ -42,7 +42,7 @@ usersRoute.post(`/me`, verifyToken, verifyUser, async (req, res, next) => {
   }
 });
 
-usersRoute.patch(`/change-profile`, verifyToken, verifyUser, async (req, res, next) => {
+usersRoute.patch(`/change-profile`, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
   try {
     const { user } = req;
     const { fieldUser, value } = req.body;

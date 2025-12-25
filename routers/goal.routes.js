@@ -11,7 +11,7 @@ app.use(express.json());
 const goalsRoute = express.Router();
 
 // add goal
-goalsRoute.post(``, verifyToken, verifyUser, async (req, res, next) => {
+goalsRoute.post(``, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
     const { dataTransactions } = req.body;
