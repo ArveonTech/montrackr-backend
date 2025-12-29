@@ -53,3 +53,11 @@ export class BudgetError extends Error {
     this.isOperational = true;
   }
 }
+
+export class AnalyticsError extends Error {
+  constructor(message, statusCode) {
+    super(message);
+    this.statusCode = statusCode;
+    this.isOperational = true;
+  }
+}

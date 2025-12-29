@@ -9,7 +9,7 @@ const transactionSchema = new Schema(
     currency: { type: mongoose.Schema.Types.String, required: true },
     type: { type: mongoose.Schema.Types.String, required: true },
     category: { type: mongoose.Schema.Types.String },
-    date: { type: mongoose.Schema.Types.Date },
+    date: { type: mongoose.Schema.Types.Date, index: true },
     paymentMethod: { type: mongoose.Schema.Types.String },
     description: { type: mongoose.Schema.Types.String },
     goalId: { type: mongoose.Schema.Types.ObjectId },

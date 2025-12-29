@@ -10,6 +10,7 @@ import transactionsRoute from "./routers/transactions.routes.js";
 import goalsRoute from "./routers/goal.routes.js";
 import subscriptionsRoute from "./routers/subscriptions.routes.js";
 import budgetRoute from "./routers/budget.routes.js";
+import analyticsRoute from "./routers/analytics.routes.js";
 
 dotenv.config();
 const app = express();
@@ -23,6 +24,7 @@ app.use("/transactions", transactionsRoute);
 app.use("/goals", goalsRoute);
 app.use("/subscriptions", subscriptionsRoute);
 app.use("/budgets", budgetRoute);
+app.use("/analytics", analyticsRoute);
 
 app.get("/", (req, res) => {
   res.json({ message: "Backend up and running" });
