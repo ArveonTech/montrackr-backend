@@ -224,6 +224,8 @@ subscriptionsRoute.patch(`/payment/:id`, verifyToken, verifyUser, verifyOwnershi
       }
     );
 
+    const dateNow = new Date();
+
     const resultAddTransactionPaymentSubscription = await Transaction.create({
       user_id: dataUserDB._id,
       title: subscriptionDetail.title,
@@ -231,7 +233,7 @@ subscriptionsRoute.patch(`/payment/:id`, verifyToken, verifyUser, verifyOwnershi
       currency: dataUserDB.currency,
       type: "expense",
       category: "financial",
-      date: new Date(),
+      date: new Date(Date.UTC(dateNow.getFullYear(), dateNow.getMonth(), dateNow.getDate())),
       paymentMethod: subscriptionDetail.paymentMethod,
       description: null,
       goalId: null,

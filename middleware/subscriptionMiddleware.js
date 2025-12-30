@@ -19,11 +19,15 @@ export const validationTransactionsSubcriptions = (req, res, next) => {
   const normalizedAmount = amount.replace(/[^\d]/g, "");
   const amountNumber = Number(normalizedAmount);
 
+  const selectedDate = rest.date ? new Date(rest.date) : new Date();
+
+  const utcDate = new Date(Date.UTC(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()));
+
   req.dataTransactions = {
     title: rest.title,
     amount: amountNumber,
     interval: normalizedInterval,
-    date: rest.date || new Date(),
+    date: utcDate,
     paymentMethod: normalizedPaymentMethod,
   };
 
@@ -52,11 +56,15 @@ export const validationUpdateTransactionsSubcriptions = (req, res, next) => {
   const normalizedAmount = amount.replace(/[^\d]/g, "");
   const amountNumber = Number(normalizedAmount);
 
+  const selectedDate = rest.date ? new Date(rest.date) : new Date();
+
+  const utcDate = new Date(Date.UTC(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()));
+
   req.dataTransactions = {
     title: rest.title,
     amount: amountNumber,
     interval: normalizedInterval,
-    date: rest.date || new Date(),
+    date: utcDate,
     paymentMethod: normalizedPaymentMethod,
     status: normalizedStatus,
   };

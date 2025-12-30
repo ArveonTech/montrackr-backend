@@ -109,8 +109,8 @@ analyticsRoute.get(`/chartAnalytics`, verifyToken, verifyUser, verifyOwnership, 
 
     if (startRangeQuery && endRangeQuery) {
       query.date = {
-        $gte: new Date(startRangeQuery).toISOString(),
-        $lte: new Date(endRangeQuery).toISOString(),
+        $gte: new Date(startRangeQuery),
+        $lte: new Date(endRangeQuery),
       };
     }
 

@@ -7,6 +7,8 @@ import { monthYearToISO } from "../helpers/monthYearToISO.js";
 import { yearToISO } from "../helpers/yearToISO.js";
 import User from "../models/user.js";
 import { rollbackBalance } from "../controllers/transactionControllers.js";
+import ExcelJS from "exceljs";
+import { formatDate } from "../utils/normalizeDate.js";
 
 const app = express();
 
@@ -132,6 +134,128 @@ transactionsRoute.get(``, verifyToken, verifyUser, async (req, res, next) => {
     });
   } catch (error) {
     next(new TransactionsError(`Error filtering transaction: ${error.message}`, 400));
+  }
+});
+
+// get export
+transactionsRoute.get(`/export`, verifyToken, verifyUser, async (req, res, next) => {
+  try {
+    const { dataUserDB } = req;
+
+    const yearNow = new Date().getFullYear();
+    const defaultStartRangeQuery = new Date(yearNow, 0, 1, 0, 0, 0, 0);
+    const defaultEndRangeQuery = new Date(yearNow, 11, 31, 23, 59, 59, 999);
+
+    const startRangeQuery = req.query.startRange || defaultStartRangeQuery;
+    const endRangeQuery = req.query.endRange || defaultEndRangeQuery;
+
+    const dateStartMonth = new Date(startRangeQuery).getFullYear() * 12 + new Date(startRangeQuery).getMonth();
+    const dateEndMonth = new Date(endRangeQuery).getFullYear() * 12 + new Date(endRangeQuery).getMonth();
+
+    const monthDifference = dateEndMonth - dateStartMonth;
+
+    if (monthDifference < 0)
+      return res.status(400).json({
+        status: "error",
+        code: 400,
+        message: "start date must be earlier than end date",
+      });
+
+    let query = {
+      user_id: dataUserDB._id,
+    };
+
+    if (startRangeQuery && endRangeQuery) {
+      query.date = {
+        $gte: new Date(startRangeQuery),
+        $lte: new Date(endRangeQuery),
+      };
+    }
+
+    const TransactionsUser = await Transaction.find(query);
+
+    const workbook = new ExcelJS.Workbook();
+
+    const worksheet = workbook.addWorksheet("MontTrackr");
+
+    worksheet.columns = [
+      { header: "Title", key: "title", width: 30 },
+      { header: "Amount", key: "amount", width: 20 },
+      { header: "Currency", key: "currency", width: 10 },
+      { header: "Type", key: "type", width: 20 },
+      { header: "Category", key: "category", width: 20 },
+      { header: "Date", key: "date", width: 20 },
+      { header: "Payment Method", key: "paymentMethod", width: 30 },
+      { header: "Description", key: "description", width: 70 },
+    ];
+
+    TransactionsUser.forEach((transaction) => {
+      const resultNormalizeDate = formatDate(transaction.date);
+
+      const dataTransaction = {
+        title: transaction.title,
+        amount: transaction.amount,
+        currency: transaction.currency,
+        type: transaction.type,
+        category: transaction.category,
+        date: resultNormalizeDate,
+        paymentMethod: transaction.paymentMethod,
+        description: transaction.description,
+      };
+
+      const row = worksheet.addRow(dataTransaction);
+
+      worksheet.getColumn(2).numFmt = "[$Rp-421]* #,##0";
+      worksheet.getColumn(3).alignment = { horizontal: "center", vertical: "middle" };
+
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+      });
+    });
+
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFD3D3D3" },
+      };
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      };
+    });
+
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber > 1) {
+        if (rowNumber % 2 === 0) {
+          row.eachCell((cell) => {
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFF0F0F0" },
+            };
+          });
+        }
+      }
+    });
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=MontTrackr.xlsx");
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.info(error);
+    next(new TransactionsError(`Error export data: ${error.message}`, 400));
   }
 });
 
