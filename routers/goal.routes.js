@@ -69,7 +69,7 @@ goalsRoute.post(``, verifyToken, verifyUser, verifyOwnership, async (req, res, n
 });
 
 // get goal
-goalsRoute.get(``, verifyToken, verifyUser, async (req, res, next) => {
+goalsRoute.get(``, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
 

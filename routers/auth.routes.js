@@ -96,14 +96,33 @@ authRoute.post(`/set-password`, async (req, res, next) => {
   try {
     const { dataUser } = req.body;
 
-    if (!dataUser.email || !dataUser.username || !dataUser.password)
+    if (dataUser.status !== "register")
+      return res.status(400).json({
+        status: "error",
+        code: 400,
+        message: "Invalid status register",
+      });
+
+    const dataUserRegister = dataUser.user;
+
+    if (!dataUserRegister.email || !dataUserRegister.username || !dataUserRegister.password)
       return res.status(404).json({
         status: "error",
         code: 404,
         message: "Data not found",
       });
 
-    const dataUserDB = await User.findOne({ email: dataUser?.email });
+    // validate user
+    const errorMsgValidateUser = validateUser({ username: dataUser.user.username, email: dataUser.user.email, password: dataUser.user.password });
+    if (errorMsgValidateUser) {
+      return res.status(400).json({
+        status: "error",
+        code: 400,
+        message: errorMsgValidateUser,
+      });
+    }
+
+    const dataUserDB = await User.findOne({ email: dataUserRegister?.email });
 
     if (dataUserDB)
       return res.status(409).json({
@@ -112,7 +131,7 @@ authRoute.post(`/set-password`, async (req, res, next) => {
         message: "User is already exists",
       });
 
-    const userDBComplate = await addUserAccountGoogle(dataUser);
+    const userDBComplate = await addUserAccountGoogle(dataUserRegister);
 
     const userObj = userDBComplate.toObject();
     const { password, balance, currency, otp, createdAt, secret, __v, isVerified, updatedAt, ...payloadJWT } = userObj;
@@ -349,7 +368,6 @@ authRoute.post(`/login`, userByEmail, async (req, res, next) => {
       },
       tokens: {
         accessToken,
-        refreshToken,
       },
     });
   } catch (error) {
@@ -616,7 +634,7 @@ authRoute.post(`/verify-otp/change-password`, userByEmail, async (req, res, next
   }
 });
 
-authRoute.post(`/verify-old-password`, userByID, async (req, res, next) => {
+authRoute.post(`/verify-old-password`, userByID, async (req, res, next) => {n
   try {
     const dataUserDB = req.dataUserDB;
     const { dataUser } = req.body;

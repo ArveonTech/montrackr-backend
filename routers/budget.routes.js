@@ -42,7 +42,7 @@ budgetRoute.post(``, verifyToken, verifyUser, verifyOwnership, validationBudget,
 });
 
 // get budget
-budgetRoute.get(``, verifyToken, verifyUser, async (req, res, next) => {
+budgetRoute.get(``, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
 
@@ -59,9 +59,7 @@ budgetRoute.get(``, verifyToken, verifyUser, async (req, res, next) => {
       status: "success",
       code: 200,
       message: "Get budget success",
-      data: {
-        items: resultGetBudget,
-      },
+      data: resultGetBudget,
     });
   } catch (error) {
     next(new BudgetError(`Error get budget: ${error.message}`, 400));

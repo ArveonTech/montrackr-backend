@@ -254,7 +254,6 @@ transactionsRoute.get(`/export`, verifyToken, verifyUser, async (req, res, next)
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
-    console.info(error);
     next(new TransactionsError(`Error export data: ${error.message}`, 400));
   }
 });

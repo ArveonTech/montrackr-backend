@@ -48,9 +48,6 @@ export const verifyUser = async (req, res, next) => {
       status: "error",
       code: 404,
       message: "User not found",
-      data: {
-        otp: false,
-      },
     });
 
   req.dataUserDB = dataUserDB;

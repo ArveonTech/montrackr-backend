@@ -1,7 +1,7 @@
 import express from "express";
 import { SubscriptionError } from "../helpers/errorHandler.js";
 import Transaction from "../models/transaction.js";
-import { validationTransactionsSubcriptions, validationUpdateTransactionsSubcriptions } from "../middleware/subscriptionMiddleware.js";
+import { getNextPaymentDate, validationTransactionsSubcriptions, validationUpdateTransactionsSubcriptions } from "../middleware/subscriptionMiddleware.js";
 import Subscription from "../models/subscription.js";
 import { verifyOwnership, verifySubscriptionExist, verifyToken, verifyUser } from "../middleware/authMiddleware.js";
 import { nextPayment } from "../utils/nextPayment.js";
@@ -215,7 +215,7 @@ subscriptionsRoute.patch(`/payment/:id`, verifyToken, verifyUser, verifyOwnershi
         message: "Subscription status is inactive",
       });
 
-    const resultPaymentSubscription = await User.findOneAndUpdate(
+    const resultReduceUserBalance = await User.findOneAndUpdate(
       { _id: dataUserDB._id },
       { $inc: { balance: -subscriptionDetail.amount } },
       {
@@ -224,6 +224,14 @@ subscriptionsRoute.patch(`/payment/:id`, verifyToken, verifyUser, verifyOwnershi
       }
     );
 
+    const resultPaymentSubscription = await Subscription.findOneAndUpdate(
+      { _id: subscriptionId, user_id: dataUserDB._id },
+      { nextPayment: getNextPaymentDate(subscriptionDetail.nextPayment, subscriptionDetail.interval) },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
     const dateNow = new Date();
 
     const resultAddTransactionPaymentSubscription = await Transaction.create({

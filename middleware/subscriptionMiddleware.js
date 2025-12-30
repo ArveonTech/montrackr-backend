@@ -71,3 +71,17 @@ export const validationUpdateTransactionsSubcriptions = (req, res, next) => {
 
   next();
 };
+
+export const getNextPaymentDate = (currentNextPaymentDate, interval) => {
+  const nextDate = new Date(currentNextPaymentDate);
+
+  if (interval === "monthly") {
+    nextDate.setMonth(nextDate.getMonth() + 1);
+  }
+
+  if (interval === "yearly") {
+    nextDate.setFullYear(nextDate.getFullYear() + 1);
+  }
+
+  return nextDate;
+};

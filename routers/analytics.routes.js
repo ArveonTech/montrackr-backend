@@ -4,6 +4,7 @@ import { AnalyticsError } from "../helpers/errorHandler.js";
 import Transaction from "../models/transaction.js";
 import { getMonthRange } from "../utils/getMonthRange.js";
 import { chartAnalytics, currentDate, previousDate } from "../controllers/analyticsControllers.js";
+import User from "../models/user.js";
 
 const app = express();
 
@@ -127,7 +128,6 @@ analyticsRoute.get(`/chartAnalytics`, verifyToken, verifyUser, verifyOwnership, 
       },
     });
   } catch (error) {
-    console.info(error);
     next(new AnalyticsError(`Error chart analytics: ${error.message}`, 400));
   }
 });
@@ -167,8 +167,8 @@ analyticsRoute.get(`/comparassion`, verifyToken, verifyUser, verifyOwnership, as
       }
     });
 
-    const differenceIncome = (currentAmountIncome - previousAmountIncome) / previousAmountIncome;
-    const differenceExpense = (currentAmountExpense - previousAmountExpense) / previousAmountExpense;
+    const differenceIncome = previousAmountIncome === 0 ? 0 : (currentAmountIncome - previousAmountIncome) / previousAmountIncome;
+    const differenceExpense = previousAmountExpense === 0 ? 0 : (currentAmountExpense - previousAmountExpense) / previousAmountExpense;
 
     const resultIncomeComparassion = differenceIncome * 100;
     const resultExpenseComparassion = differenceExpense * 100;
@@ -183,7 +183,6 @@ analyticsRoute.get(`/comparassion`, verifyToken, verifyUser, verifyOwnership, as
       },
     });
   } catch (error) {
-    console.info(error);
     next(new AnalyticsError(`Error comparassion: ${error.message}`, 400));
   }
 });
