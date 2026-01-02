@@ -46,24 +46,18 @@ authRoute.get(`/google/callback`, async (req, res, next) => {
     const { data } = await oauth2.userinfo.get();
 
     if (!data.email || !data.name) {
-      return res.status(404).json({ data });
+      return res.redirect(process.env.REDIRECT_LOGIN_GOOGLE + `/login/?status=failed`);
     }
 
     const user = await User.findOne({ email: data?.email });
 
-    if (!user)
-      return res.status(401).json({
-        status: "register",
-        user: {
-          email: data.email,
-          username: data.name,
-        },
-      });
+    if (!user) {
+      return res.redirect(process.env.REDIRECT_LOGIN_GOOGLE + `/set-password?status=register&email=${encodeURIComponent(data.email)}&username=${encodeURIComponent(data.name)}`);
+    }
 
     const userObj = user.toObject();
     const { password, balance, currency, otp, createdAt, secret, __v, isVerified, updatedAt, ...payloadJWT } = userObj;
 
-    const accessToken = createAccessToken(payloadJWT);
     const refreshToken = createRefreshToken(payloadJWT);
 
     res.cookie("refresh-token", refreshToken, {
@@ -74,19 +68,7 @@ authRoute.get(`/google/callback`, async (req, res, next) => {
       path: "/",
     });
 
-    res.status(200).json({
-      status: "success",
-      auth: "login",
-      data: {
-        _id: user?._id,
-        username: user.username,
-        email: user.email,
-        profile: user.profile,
-      },
-      tokens: {
-        accessToken,
-      },
-    });
+    res.redirect(process.env.REDIRECT_LOGIN_GOOGLE + `/home`);
   } catch (error) {
     next(new AuthError(`Error callback google ${error.message}`, 500));
   }
@@ -634,7 +616,8 @@ authRoute.post(`/verify-otp/change-password`, userByEmail, async (req, res, next
   }
 });
 
-authRoute.post(`/verify-old-password`, userByID, async (req, res, next) => {n
+authRoute.post(`/verify-old-password`, userByID, async (req, res, next) => {
+  n;
   try {
     const dataUserDB = req.dataUserDB;
     const { dataUser } = req.body;
@@ -739,7 +722,7 @@ authRoute.post(`/change-password`, userByID, async (req, res, next) => {
   }
 });
 
-authRoute.post(`/refresh`, verifyToken, (req, res) => {
+authRoute.get(`/refresh`, verifyToken, (req, res) => {
   try {
     const { accessToken, refreshToken, status } = req;
 
@@ -765,9 +748,9 @@ authRoute.post(`/refresh`, verifyToken, (req, res) => {
   }
 });
 
-authRoute.post(`/logout`, verifyToken, userByID, (req, res) => {
+authRoute.get(`/logout`, verifyToken, userByID, (req, res) => {
   try {
-    res.clearCookie("refresh-token", refreshToken, {
+    res.clearCookie("refresh-token", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.SAMESITE,
