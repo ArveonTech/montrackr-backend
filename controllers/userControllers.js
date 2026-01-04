@@ -37,3 +37,32 @@ export const addUserAccountGoogle = async (dataUser) => {
     throw new Error(`Error add user google: ${error.message}`);
   }
 };
+
+export const setUserOtp = async ({ userId, otp }) => {
+  const expiredAt = new Date(Date.now() + 60 * 1000);
+
+  return await User.findByIdAndUpdate(
+    userId,
+    {
+      otp,
+      otpExpiredAt: expiredAt,
+    },
+    { new: true }
+  );
+};
+
+export const verifyUserOtp = async ({ userId, otp }) => {
+  const user = await User.findById(userId);
+
+  if (!user || !user.otp) return { valid: false, reason: "OTP expired" };
+
+  if (user.otp !== otp) return { valid: false, reason: "OTP invalid" };
+
+  if (user.otpExpiredAt < new Date()) return { valid: false, reason: "OTP expired" };
+
+  await User.findByIdAndUpdate(userId, {
+    $unset: { otp: "", otpExpiredAt: "" },
+  });
+
+  return { valid: true };
+};

@@ -11,6 +11,8 @@ const userSchema = new Schema(
     currency: { type: mongoose.Schema.Types.String },
     isVerified: { type: mongoose.Schema.Types.Boolean },
     secret: { type: mongoose.Schema.Types.String },
+    otp: { type: mongoose.Schema.Types.String },
+    otpExpiredAt: { type: mongoose.Schema.Types.Date },
   },
   {
     timestamps: true,

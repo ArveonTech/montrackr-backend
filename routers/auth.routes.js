@@ -4,7 +4,7 @@ import { google } from "googleapis";
 import { createAccessToken, createRefreshToken } from "../utils/authToken.js";
 import { AuthError } from "../helpers/errorHandler.js";
 import { validateUser } from "../utils/validateUser.js";
-import { addUserAccountGoogle, addUserAccountVerified } from "../controllers/userControllers.js";
+import { addUserAccountGoogle, addUserAccountVerified, setUserOtp, verifyUserOtp } from "../controllers/userControllers.js";
 import { requestOTP, verifyTokenOTP } from "../utils/OTP.js";
 import { userByEmail, userByID } from "../middleware/authMiddleware.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
@@ -217,14 +217,14 @@ authRoute.post(`/request-otp/register`, userByID, async (req, res, next) => {
   try {
     const dataUserDB = req.dataUserDB;
 
-    const resutlSendMessageOTP = await requestOTP(dataUserDB.secret, dataUserDB.email);
+    const { statusOTP, otpGenerate } = await requestOTP({ userId: dataUserDB._id, secret: dataUserDB.secret, email: dataUserDB.email });
 
     res.status(202).json({
       status: "success",
       code: 202,
-      message: "OTP register success",
+      message: statusOTP,
       data: {
-        otp: resutlSendMessageOTP,
+        otp: true,
       },
     });
   } catch (error) {
@@ -237,12 +237,13 @@ authRoute.post(`/verify-otp/register`, userByID, async (req, res, next) => {
     const { dataUser } = req.body;
     const dataUserDB = req.dataUserDB;
 
-    const resultVerifyTokenOTP = verifyTokenOTP(dataUser?.token, dataUserDB?.secret);
-    if (resultVerifyTokenOTP === false)
+    const resultVerifyTokenOTP = await verifyUserOtp({ userId: dataUserDB, otp: dataUser.token });
+
+    if (resultVerifyTokenOTP.valid === false)
       return res.status(422).json({
         status: "error",
         code: 422,
-        message: "OTP register invalid",
+        message: resultVerifyTokenOTP.reason,
         data: {
           otp: false,
         },
@@ -361,14 +362,14 @@ authRoute.post(`/request-otp/login`, userByID, async (req, res, next) => {
   try {
     const dataUserDB = req.dataUserDB;
 
-    const resutlSendMessageOTP = await requestOTP(dataUserDB.secret, dataUserDB.email);
+    const { statusOTP, otpGenerate } = await requestOTP({ userId: dataUserDB._id, secret: dataUserDB.secret, email: dataUserDB.email });
 
     res.status(202).json({
       status: "success",
       code: 202,
-      message: "OTP login success",
+      message: statusOTP,
       data: {
-        otp: resutlSendMessageOTP,
+        otp: true,
       },
     });
   } catch (error) {
@@ -381,12 +382,13 @@ authRoute.post(`/verify-otp/login`, userByID, async (req, res, next) => {
     const { dataUser } = req.body;
     const dataUserDB = req.dataUserDB;
 
-    const resultVerifyTokenOTP = verifyTokenOTP(dataUser?.token, dataUserDB?.secret);
-    if (resultVerifyTokenOTP === false)
+    const resultVerifyTokenOTP = await verifyUserOtp({ userId: dataUserDB, otp: dataUser.token });
+
+    if (resultVerifyTokenOTP.valid === false)
       return res.status(422).json({
         status: "error",
         code: 422,
-        message: "OTP login invalid",
+        message: resultVerifyTokenOTP.reason,
         data: {
           otp: false,
         },
@@ -394,7 +396,7 @@ authRoute.post(`/verify-otp/login`, userByID, async (req, res, next) => {
 
     const userDBComplate = await User.findOneAndUpdate(
       { _id: dataUserDB._id },
-      { isVerified: true },
+      { isVerified: true, profile: "profile-1", balance: 0, currency: "IDR" },
       {
         new: true,
         runValidators: true,
@@ -447,14 +449,14 @@ authRoute.post(`/request-otp/forgot-password`, userByEmail, async (req, res, nex
     const { dataUser } = req.body;
     const dataUserDB = req.dataUserDB;
 
-    const resutlSendMessageOTP = await requestOTP(dataUserDB.secret, dataUser?.email);
+    const { statusOTP, otpGenerate } = await requestOTP({ userId: dataUserDB._id, secret: dataUserDB.secret, email: dataUserDB.email });
 
     res.status(202).json({
       status: "success",
       code: 202,
-      message: "OTP forgot password success",
+      message: statusOTP,
       data: {
-        otp: resutlSendMessageOTP,
+        otp: true,
       },
     });
   } catch (error) {
@@ -467,13 +469,13 @@ authRoute.post(`/verify-otp/forgot-password`, userByEmail, async (req, res, next
     const { dataUser } = req.body;
     const dataUserDB = req.dataUserDB;
 
-    const resultVerifyTokenOTP = verifyTokenOTP(dataUser?.token, dataUserDB.secret);
+    const resultVerifyTokenOTP = await verifyUserOtp({ userId: dataUserDB, otp: dataUser.token });
 
-    if (resultVerifyTokenOTP === false)
+    if (resultVerifyTokenOTP.valid === false)
       return res.status(422).json({
         status: "error",
         code: 422,
-        message: "OTP forgot password invalid",
+        message: resultVerifyTokenOTP.reason,
         data: {
           otp: false,
         },
@@ -567,18 +569,18 @@ authRoute.post(`/request-otp/change-password`, userByEmail, async (req, res, nex
   try {
     const dataUserDB = req.dataUserDB;
 
-    const resutlSendMessageOTP = await requestOTP(dataUserDB.secret, email);
+    const { statusOTP, otpGenerate } = await requestOTP({ userId: dataUserDB._id, secret: dataUserDB.secret, email: dataUserDB.email });
 
     res.status(202).json({
       status: "success",
       code: 202,
-      message: "OTP change password success",
+      message: statusOTP,
       data: {
-        otp: resutlSendMessageOTP,
+        otp: true,
       },
     });
   } catch (error) {
-    next(new AuthError(`Error requ est otp change password: ${error.message}`, 400));
+    next(new AuthError(`Error request otp change password: ${error.message}`, 400));
   }
 });
 
@@ -587,13 +589,13 @@ authRoute.post(`/verify-otp/change-password`, userByEmail, async (req, res, next
     const { dataUser } = req.body;
     const dataUserDB = req.dataUserDB;
 
-    const resultVerifyTokenOTP = verifyTokenOTP(dataUser.token, dataUserDB.secret);
+    const resultVerifyTokenOTP = await verifyUserOtp({ userId: dataUserDB, otp: dataUser.token });
 
-    if (resultVerifyTokenOTP === false)
+    if (resultVerifyTokenOTP.valid === false)
       return res.status(422).json({
         status: "error",
         code: 422,
-        message: "OTP change password invalid",
+        message: resultVerifyTokenOTP.reason,
         data: {
           otp: false,
         },

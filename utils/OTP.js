@@ -1,6 +1,7 @@
 import { authenticator } from "otplib";
 import { sendMeessage } from "./email.js";
-authenticator.options = { step: 60 };
+import User from "../models/user.js";
+authenticator.options = { step: 300 };
 
 export const generateTokenOTP = (secret) => {
   const token = authenticator.generate(secret);
@@ -17,13 +18,20 @@ export const verifyTokenOTP = (token, secret) => {
   }
 };
 
-export const requestOTP = async (secret, email) => {
+export const requestOTP = async ({ userId, secret, email }) => {
   try {
+    const now = new Date();
+    const expiredAt = new Date(now.getTime() + 60 * 1000);
+
     const resultGenerateTokenOTP = generateTokenOTP(secret);
+
+    const user = await User.findOneAndUpdate({ _id: userId, $or: [{ otpExpiredAt: { $lt: now } }, { otpExpiredAt: null }] }, { otp: resultGenerateTokenOTP, otpExpiredAt: expiredAt }, { new: true });
+
+    if (!user) return { statusOTP: "ok", message: "Request processed" };
 
     const resutlSendMessageOTP = await sendMeessage(resultGenerateTokenOTP, email, 1);
 
-    return resutlSendMessageOTP; // email enkripsi;
+    return { statusOTP: "ok", otpGenerate: resultGenerateTokenOTP };
   } catch (error) {
     throw new Error(`Error request OTP : ${error.message}`, 401);
   }
