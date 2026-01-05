@@ -17,15 +17,18 @@ const oauth2Client = new google.auth.OAuth2(process.env.CLIENT_ID, process.env.C
 
 const scopes = ["https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"];
 
-const authorizationUrl = oauth2Client.generateAuthUrl({
-  access_type: "offline",
-  scope: scopes,
-  include_granted_scopes: true,
-});
-
 // Login or Register with Google
 authRoute.get(`/google`, (req, res) => {
   try {
+    const source = req.query.source;
+
+    const authorizationUrl = oauth2Client.generateAuthUrl({
+      access_type: "offline",
+      scope: scopes,
+      include_granted_scopes: true,
+      state: source,
+    });
+
     res.redirect(authorizationUrl);
   } catch (error) {
     throw new AuthError("Error register google", 500);
@@ -34,7 +37,7 @@ authRoute.get(`/google`, (req, res) => {
 
 authRoute.get(`/google/callback`, async (req, res, next) => {
   try {
-    const { code } = req.query;
+    const { code, state } = req.query;
 
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
@@ -46,7 +49,7 @@ authRoute.get(`/google/callback`, async (req, res, next) => {
     const { data } = await oauth2.userinfo.get();
 
     if (!data.email || !data.name) {
-      return res.redirect(process.env.REDIRECT_LOGIN_GOOGLE + `/login/?status=failed`);
+      return res.redirect(process.env.REDIRECT_LOGIN_GOOGLE + `/${state}/?status=failed`);
     }
 
     const user = await User.findOne({ email: data?.email });
@@ -199,9 +202,9 @@ authRoute.post(`/register`, async (req, res, next) => {
     const newAccountVerified = await addUserAccountVerified(dataUser);
 
     res.status(201).json({
-      status: "success",
+      status: "pending",
       code: 200,
-      message: "Account verified created",
+      message: "Your account has been successfully created.Please verify the email to continue.",
       data: {
         _id: newAccountVerified?._id,
         username: newAccountVerified?.username,
@@ -444,9 +447,21 @@ authRoute.post(`/verify-otp/login`, userByID, async (req, res, next) => {
   }
 });
 
+authRoute.post(`/forgot-password`, userByEmail, async (req, res, next) => {
+  try {
+    res.status(200).json({
+      status: "success",
+      code: 200,
+      message: "Email is already",
+      data: {},
+    });
+  } catch (error) {
+    next(new AuthError(`Error request otp forgot password: ${error.message}`, 400));
+  }
+});
+
 authRoute.post(`/request-otp/forgot-password`, userByEmail, async (req, res, next) => {
   try {
-    const { dataUser } = req.body;
     const dataUserDB = req.dataUserDB;
 
     const { statusOTP, otpGenerate } = await requestOTP({ userId: dataUserDB._id, secret: dataUserDB.secret, email: dataUserDB.email });
@@ -498,7 +513,7 @@ authRoute.post(`/verify-otp/forgot-password`, userByEmail, async (req, res, next
   }
 });
 
-authRoute.post(`/forgot-password`, userByID, async (req, res) => {
+authRoute.post(`/set-password/forgot-password`, userByID, async (req, res) => {
   try {
     const dataUserDB = req.dataUserDB;
     const { dataUser } = req.body;
