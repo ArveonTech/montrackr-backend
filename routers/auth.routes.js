@@ -449,11 +449,13 @@ authRoute.post(`/verify-otp/login`, userByID, async (req, res, next) => {
 
 authRoute.post(`/forgot-password`, userByEmail, async (req, res, next) => {
   try {
+    const dataUserDB = req.dataUserDB;
+
     res.status(200).json({
-      status: "success",
+      status: "pending",
       code: 200,
       message: "Email is already",
-      data: {},
+      data: { _id: dataUserDB._id, username: dataUserDB.username, email: dataUserDB.email },
     });
   } catch (error) {
     next(new AuthError(`Error request otp forgot password: ${error.message}`, 400));
@@ -519,13 +521,11 @@ authRoute.post(`/set-password/forgot-password`, userByID, async (req, res) => {
     const { dataUser } = req.body;
 
     if (!dataUser._id || !dataUser.username || !dataUser.email || !dataUser.otp || !dataUser.profile)
-      return res.status(404).json({
+      return res.status(400).json({
         status: "error",
-        code: 404,
-        message: "Data not found",
-        data: {
-          otp: false,
-        },
+        code: 400,
+        message: "Something went wrong",
+        data: {},
       });
 
     const resultUpdateForgotPassword = await User.findOneAndUpdate(
