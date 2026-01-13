@@ -8,7 +8,7 @@ const transactionSchema = new Schema(
     amount: { type: mongoose.Schema.Types.Int32, required: true },
     currency: { type: mongoose.Schema.Types.String, required: true },
     type: { type: mongoose.Schema.Types.String, required: true },
-    category: { type: mongoose.Schema.Types.String },
+    category: { type: mongoose.Schema.Types.String, required: true },
     date: { type: mongoose.Schema.Types.Date, index: true },
     paymentMethod: { type: mongoose.Schema.Types.String },
     description: { type: mongoose.Schema.Types.String },

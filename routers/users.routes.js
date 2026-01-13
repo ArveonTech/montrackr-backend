@@ -10,12 +10,11 @@ app.use(express.json());
 
 const usersRoute = express.Router();
 
-usersRoute.post(`/me`, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
+usersRoute.get(`/me`, verifyToken, verifyUser, async (req, res, next) => {
   try {
     const { accessToken, refreshToken, status, user } = req;
 
     const dataUserDB = await User.findById(user._id);
-
     if (status === "refresh")
       res.cookie("refresh-token", refreshToken, {
         httpOnly: true,
@@ -28,7 +27,7 @@ usersRoute.post(`/me`, verifyToken, verifyUser, verifyOwnership, async (req, res
     res.status(200).json({
       status: "success",
       code: 200,
-      message: "OTP register success",
+      message: "Get profile success",
       data: {
         _id: dataUserDB?._id,
         username: dataUserDB?.username,
@@ -42,7 +41,7 @@ usersRoute.post(`/me`, verifyToken, verifyUser, verifyOwnership, async (req, res
   }
 });
 
-usersRoute.patch(`/change-profile`, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
+usersRoute.patch(`/change-profile`, verifyToken, verifyUser, async (req, res, next) => {
   try {
     const { user } = req;
     const { fieldUser, value } = req.body;

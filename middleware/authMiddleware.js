@@ -50,6 +50,16 @@ export const verifyUser = async (req, res, next) => {
       message: "User not found",
     });
 
+  if (!dataUserDB.isVerified)
+    return res.status(400).json({
+      status: "error",
+      code: 400,
+      message: "User not verified",
+      data: {
+        otp: false,
+      },
+    });
+
   req.dataUserDB = dataUserDB;
 
   next();
@@ -57,6 +67,7 @@ export const verifyUser = async (req, res, next) => {
 
 export const verifyOwnership = async (req, res, next) => {
   const { user } = req;
+
   const { dataTransactions } = req.body;
 
   if (user._id !== dataTransactions.user_id)

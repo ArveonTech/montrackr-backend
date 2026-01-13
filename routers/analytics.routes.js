@@ -14,7 +14,7 @@ const analyticsRoute = express.Router();
 const typeList = ["income", "expense"];
 
 // home analytics
-analyticsRoute.get(`/home`, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
+analyticsRoute.post(`/dashboard`, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
 
@@ -82,7 +82,7 @@ analyticsRoute.get(`/home`, verifyToken, verifyUser, verifyOwnership, async (req
 });
 
 // analytics chart
-analyticsRoute.get(`/chartAnalytics`, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
+analyticsRoute.post(`/chartAnalytics`, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
 
@@ -133,7 +133,7 @@ analyticsRoute.get(`/chartAnalytics`, verifyToken, verifyUser, verifyOwnership, 
 });
 
 //  comparassion
-analyticsRoute.get(`/comparassion`, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
+analyticsRoute.post(`/comparassion`, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
     const period = req.query.period || "month";

@@ -755,10 +755,8 @@ authRoute.get(`/refresh`, verifyToken, (req, res) => {
     res.status(202).json({
       status: "success",
       code: 202,
-      message: "OTP register success",
-      tokens: {
-        tokens: status === "refresh" ? { accessToken } : undefined,
-      },
+      message: "Refresh token success",
+      tokens: status === "refresh" ? { accessToken } : undefined,
     });
   } catch (error) {
     next(new AuthError(`Error refresh token: ${error.message}`, 400));
