@@ -4,6 +4,7 @@ const { Schema, model } = mongoose;
 const BudgetSchema = new Schema(
   {
     user_id: { type: mongoose.Schema.Types.ObjectId, required: true },
+    budget: { type: Number, required: true },
     categories: {
       essentials: { type: Number, required: true },
       lifestyle: { type: Number, required: true },
