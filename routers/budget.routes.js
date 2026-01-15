@@ -26,8 +26,10 @@ budgetRoute.post(``, verifyToken, verifyUser, verifyOwnership, validationBudget,
         message: "The budget is there",
       });
 
+    console.info(dataTransactions);
     const resultAddBudget = await Budget.create({
       user_id: dataUserDB._id,
+      budget: dataTransactions.budget,
       categories: dataTransactions.categories,
     });
 
@@ -108,6 +110,7 @@ budgetRoute.patch(``, verifyToken, verifyUser, verifyOwnership, verifyBudgetExis
     const resultUpdateBudgetUser = await Budget.findOneAndUpdate(
       { user_id: dataUserDB._id },
       {
+        budget: dataTransactions.budget,
         categories: dataTransactions.categories,
       },
       {

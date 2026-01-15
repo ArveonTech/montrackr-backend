@@ -3,7 +3,7 @@ const categoryList = ["essentials", "lifestyle", "health", "family & social", "f
 export const validationBudget = (req, res, next) => {
   const { dataTransactions } = req.body;
 
-  if (!dataTransactions.categories || typeof dataTransactions.categories !== "object") {
+  if (!dataTransactions.categories || typeof dataTransactions.categories !== "object" || !dataTransactions) {
     return res.status(400).json({ message: "Budget data must be an object" });
   }
 
@@ -21,6 +21,9 @@ export const validationBudget = (req, res, next) => {
     normalizedBudget[category] = amountNumber || 0;
   }
 
-  req.dataTransactions = { categories: normalizedBudget };
+  const normalizedAmount = String(dataTransactions.budget).replace(/[^\d]/g, "");
+  const amountBudgetNumber = Number(normalizedAmount);
+
+  req.dataTransactions = { categories: normalizedBudget, budget: amountBudgetNumber };
   next();
 };
