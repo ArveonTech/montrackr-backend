@@ -33,7 +33,6 @@ export const verifyToken = (req, res, next) => {
 
 export const verifyUser = async (req, res, next) => {
   const { user } = req;
-
   if (!user)
     return res.status(404).json({
       status: "error",
