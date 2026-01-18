@@ -167,7 +167,7 @@ subscriptionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, verif
         {
           new: true,
           runValidators: true,
-        }
+        },
       );
     } else {
       resultUpdateSubscription = await Subscription.findOneAndUpdate(
@@ -181,7 +181,7 @@ subscriptionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, verif
         {
           new: true,
           runValidators: true,
-        }
+        },
       );
     }
 
@@ -221,7 +221,7 @@ subscriptionsRoute.patch(`/payment/:id`, verifyToken, verifyUser, verifyOwnershi
       {
         new: true,
         runValidators: true,
-      }
+      },
     );
 
     const resultPaymentSubscription = await Subscription.findOneAndUpdate(
@@ -230,7 +230,7 @@ subscriptionsRoute.patch(`/payment/:id`, verifyToken, verifyUser, verifyOwnershi
       {
         new: true,
         runValidators: true,
-      }
+      },
     );
     const dateNow = new Date();
 
@@ -274,9 +274,9 @@ subscriptionsRoute.delete(`/:id`, verifyToken, verifyUser, verifyOwnership, veri
         message: "Failed to cancel subscription",
       });
 
-    res.status(204).json({
+    res.status(200).json({
       status: "success",
-      code: 204,
+      code: 200,
       message: "Cancel subscription success",
     });
   } catch (error) {

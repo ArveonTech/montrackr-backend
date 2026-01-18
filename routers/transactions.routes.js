@@ -315,7 +315,7 @@ transactionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, valida
       {
         new: true,
         runValidators: true,
-      }
+      },
     );
 
     if (!resultUpdateTransaction) throw new Error(`Failed to update transaction`);
@@ -334,7 +334,7 @@ transactionsRoute.patch(`/:id`, verifyToken, verifyUser, verifyOwnership, valida
           {
             new: true,
             runValidators: true,
-          }
+          },
         );
 
         if (!resultActionBalanceUser) throw new Error(`Failed to update balance for transactions`);
@@ -366,6 +366,13 @@ transactionsRoute.delete(`/:id`, verifyToken, verifyUser, verifyOwnership, async
         status: "error",
         code: 404,
         message: "Transaction not found",
+      });
+
+    if (dataTransactions.goalId || dataTransactions.subsId)
+      return res.status(404).json({
+        status: "error",
+        code: 404,
+        message: "This transaction cannot be deleted",
       });
 
     const resultDeleteTransactions = await Transaction.deleteOne({ _id: idTransactions, user_id: dataUserDB._id });
