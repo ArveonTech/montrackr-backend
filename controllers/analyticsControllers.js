@@ -1,42 +1,41 @@
 import { normalizeDate, formatYearMonth } from "../utils/normalizeDate.js";
 
 export const chartAnalytics = (startRangeQuery, endRangeQuery, dateStartMonth, dateEndMonth, TransactionsUser, type) => {
-  const incomeCategory = {
-    salary: 0,
-    bonus: 0,
-    freelance: 0,
-    business: 0,
-    gift: 0,
-    others: 0,
-  };
+  const incomeCategory = [
+    { label: "salary", value: 0 },
+    { label: "bonus", value: 0 },
+    { label: "freelance", value: 0 },
+    { label: "business", value: 0 },
+    { label: "gift", value: 0 },
+    { label: "others", value: 0 },
+  ];
 
-  const expenseCategory = {
-    essentials: 0,
-    lifestyle: 0,
-    health: 0,
-    "family & social": 0,
-    financial: 0,
-    others: 0,
-  };
-
+  const expenseCategory = [
+    { label: "essentials", value: 0 },
+    { label: "lifestyle", value: 0 },
+    { label: "healt", value: 0 },
+    { label: "family & social", value: 0 },
+    { label: "financial", value: 0 },
+    { label: "others", value: 0 },
+  ];
   const monthDifference = dateEndMonth - dateStartMonth;
 
   const latestDate = new Date(endRangeQuery);
 
-  let category = null;
+  let resultChart = [];
+
+  let resultCategory = {};
 
   if (type === "income") {
-    category = incomeCategory;
+    resultCategory["income"] = incomeCategory;
   } else if (type === "expense") {
-    category = expenseCategory;
+    resultCategory["expense"] = expenseCategory;
   } else {
-    category = {
+    resultCategory = {
       income: incomeCategory,
       expense: expenseCategory,
     };
   }
-
-  let resultChart = [];
 
   if (monthDifference < 0) {
     return res.status(400).json({
@@ -80,15 +79,25 @@ export const chartAnalytics = (startRangeQuery, endRangeQuery, dateStartMonth, d
 
     TransactionsUser.forEach((transaction) => {
       if (type === "income") {
-        category[transaction.category] += transaction.amount;
+        resultCategory["income"].map((cate) => {
+          if (cate.label === transaction.category) {
+            cate.value += transaction.amount;
+          }
+        });
       } else if (type === "expense") {
-        category[transaction.category] += transaction.amount;
+        resultCategory["expense"].map((cate) => {
+          if (cate.label === transaction.category) {
+            cate.value += transaction.amount;
+          }
+        });
       } else {
-        category[transaction.type][transaction.category] += transaction.amount;
+        resultCategory[transaction.type].map((cate) => {
+          if (cate.label === transaction.category) {
+            cate.value += transaction.amount;
+          }
+        });
       }
     });
-
-    resultChart.push({ category });
   } else if (monthDifference > 1 && monthDifference <= 12) {
     const currentDate = new Date(startRangeQuery);
 
@@ -135,15 +144,25 @@ export const chartAnalytics = (startRangeQuery, endRangeQuery, dateStartMonth, d
 
     TransactionsUser.forEach((transaction) => {
       if (type === "income") {
-        category[transaction.category] += transaction.amount;
+        resultCategory["income"].map((cate) => {
+          if (cate.label === transaction.category) {
+            cate.value += transaction.amount;
+          }
+        });
       } else if (type === "expense") {
-        category[transaction.category] += transaction.amount;
+        resultCategory["expense"].map((cate) => {
+          if (cate.label === transaction.category) {
+            cate.value += transaction.amount;
+          }
+        });
       } else {
-        category[transaction.type][transaction.category] += transaction.amount;
+        resultCategory[transaction.type].map((cate) => {
+          if (cate.label === transaction.category) {
+            cate.value += transaction.amount;
+          }
+        });
       }
     });
-
-    resultChart.push({ category });
   } else {
     const currentDate = new Date(startRangeQuery);
 
@@ -184,18 +203,28 @@ export const chartAnalytics = (startRangeQuery, endRangeQuery, dateStartMonth, d
 
     TransactionsUser.forEach((transaction) => {
       if (type === "income") {
-        category[transaction.category] += transaction.amount;
+        resultCategory["income"].map((cate) => {
+          if (cate.label === transaction.category) {
+            cate.value += transaction.amount;
+          }
+        });
       } else if (type === "expense") {
-        category[transaction.category] += transaction.amount;
+        resultCategory["expense"].map((cate) => {
+          if (cate.label === transaction.category) {
+            cate.value += transaction.amount;
+          }
+        });
       } else {
-        category[transaction.type][transaction.category] += transaction.amount;
+        resultCategory[transaction.type].map((cate) => {
+          if (cate.label === transaction.category) {
+            cate.value += transaction.amount;
+          }
+        });
       }
     });
-
-    resultChart.push({ category });
   }
 
-  return resultChart;
+  return { resultChart, resultCategory };
 };
 
 export const previousDate = (idUser, dateNow, period) => {

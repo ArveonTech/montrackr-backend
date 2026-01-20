@@ -85,7 +85,6 @@ analyticsRoute.post(`/dashboard`, verifyToken, verifyUser, verifyOwnership, asyn
 analyticsRoute.post(`/chartAnalytics`, verifyToken, verifyUser, verifyOwnership, async (req, res, next) => {
   try {
     const { dataUserDB } = req;
-
     const yearNow = new Date().getFullYear();
     const defaultStartRangeQuery = new Date(yearNow, 0, 1, 0, 0, 0, 0);
     const defaultEndRangeQuery = new Date(yearNow, 11, 31, 23, 59, 59, 999);
@@ -117,7 +116,7 @@ analyticsRoute.post(`/chartAnalytics`, verifyToken, verifyUser, verifyOwnership,
 
     const TransactionsUser = await Transaction.find(query);
 
-    const resultChart = chartAnalytics(startRangeQuery, endRangeQuery, dateStartMonth, dateEndMonth, TransactionsUser, type);
+    const { resultChart, resultCategory } = chartAnalytics(startRangeQuery, endRangeQuery, dateStartMonth, dateEndMonth, TransactionsUser, type);
 
     res.status(200).json({
       status: "success",
@@ -125,6 +124,7 @@ analyticsRoute.post(`/chartAnalytics`, verifyToken, verifyUser, verifyOwnership,
       message: "Get chart analytics success",
       data: {
         resultChart,
+        resultCategory,
       },
     });
   } catch (error) {
