@@ -2,22 +2,23 @@ import { normalizeDate, formatYearMonth } from "../utils/normalizeDate.js";
 
 export const chartAnalytics = (startRangeQuery, endRangeQuery, dateStartMonth, dateEndMonth, TransactionsUser, type) => {
   const incomeCategory = [
-    { label: "salary", value: 0 },
-    { label: "bonus", value: 0 },
-    { label: "freelance", value: 0 },
-    { label: "business", value: 0 },
-    { label: "gift", value: 0 },
-    { label: "others", value: 0 },
+    { label: "salary", value: 0, fill: "#22c55e" },
+    { label: "bonus", value: 0, fill: "#4ade80" },
+    { label: "freelance", value: 0, fill: "#16a34a" },
+    { label: "business", value: 0, fill: "#15803d" },
+    { label: "gift", value: 0, fill: "#86efac" },
+    { label: "others", value: 0, fill: "#bbf7d0" },
   ];
 
   const expenseCategory = [
-    { label: "essentials", value: 0 },
-    { label: "lifestyle", value: 0 },
-    { label: "healt", value: 0 },
-    { label: "family & social", value: 0 },
-    { label: "financial", value: 0 },
-    { label: "others", value: 0 },
+    { label: "essentials", value: 0, fill: "#ef4444" },
+    { label: "lifestyle", value: 0, fill: "#f97316" },
+    { label: "health", value: 0, fill: "#eab308" },
+    { label: "family & social", value: 0, fill: "#ec4899" },
+    { label: "financial", value: 0, fill: "#8b5cf6" },
+    { label: "others", value: 0, fill: "#9ca3af" },
   ];
+
   const monthDifference = dateEndMonth - dateStartMonth;
 
   const latestDate = new Date(endRangeQuery);
@@ -235,6 +236,8 @@ export const previousDate = (idUser, dateNow, period) => {
   const yearPrevious = dateNow.getFullYear();
   const monthPrevious = dateNow.getMonth();
   const datePrevious = dateNow.getDate();
+
+  console.info(period);
 
   if (period === "today") {
     queryPrevious.date = {

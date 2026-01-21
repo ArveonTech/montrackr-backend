@@ -138,7 +138,7 @@ analyticsRoute.post(`/comparassion`, verifyToken, verifyUser, verifyOwnership, a
     const { dataUserDB } = req;
     const period = req.query.period || "month";
 
-    const dateNow = new Date(2026, 11, 31, 0, 0, 0, 0);
+    const dateNow = new Date();
 
     let previousAmountIncome = 0;
     let previousAmountExpense = 0;
