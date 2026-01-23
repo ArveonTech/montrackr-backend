@@ -43,7 +43,7 @@ usersRoute.get(`/me`, verifyToken, verifyUser, async (req, res, next) => {
 
 usersRoute.patch(`/change-profile`, verifyToken, verifyUser, async (req, res, next) => {
   try {
-    const { user } = req;
+    const { user, dataUserDB } = req;
     const { fieldUser, value } = req.body;
 
     const resultUpdateUser = await User.findOneAndUpdate(
@@ -52,7 +52,7 @@ usersRoute.patch(`/change-profile`, verifyToken, verifyUser, async (req, res, ne
       {
         new: true,
         runValidators: true,
-      }
+      },
     );
 
     const userObj = resultUpdateUser.toObject();

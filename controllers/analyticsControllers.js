@@ -237,8 +237,6 @@ export const previousDate = (idUser, dateNow, period) => {
   const monthPrevious = dateNow.getMonth();
   const datePrevious = dateNow.getDate();
 
-  console.info(period);
-
   if (period === "today") {
     queryPrevious.date = {
       $gte: new Date(yearPrevious, monthPrevious, datePrevious - 1, 0, 0, 0, 0),

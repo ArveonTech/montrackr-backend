@@ -258,7 +258,7 @@ authRoute.post(`/verify-otp/register`, userByID, async (req, res, next) => {
       {
         new: true,
         runValidators: true,
-      }
+      },
     );
 
     if (!userDBComplate)
@@ -403,7 +403,7 @@ authRoute.post(`/verify-otp/login`, userByID, async (req, res, next) => {
       {
         new: true,
         runValidators: true,
-      }
+      },
     );
 
     if (!userDBComplate)
@@ -534,7 +534,7 @@ authRoute.post(`/set-password/forgot-password`, userByID, async (req, res) => {
       {
         new: true,
         runValidators: true,
-      }
+      },
     );
 
     if (!resultUpdateForgotPassword)
@@ -580,114 +580,17 @@ authRoute.post(`/set-password/forgot-password`, userByID, async (req, res) => {
   }
 });
 
-authRoute.post(`/request-otp/change-password`, userByEmail, async (req, res, next) => {
-  try {
-    const dataUserDB = req.dataUserDB;
-
-    const { statusOTP, otpGenerate } = await requestOTP({ userId: dataUserDB._id, secret: dataUserDB.secret, email: dataUserDB.email });
-
-    res.status(202).json({
-      status: "success",
-      code: 202,
-      message: statusOTP,
-      data: {
-        otp: true,
-      },
-    });
-  } catch (error) {
-    next(new AuthError(`Error request otp change password: ${error.message}`, 400));
-  }
-});
-
-authRoute.post(`/verify-otp/change-password`, userByEmail, async (req, res, next) => {
-  try {
-    const { dataUser } = req.body;
-    const dataUserDB = req.dataUserDB;
-
-    const resultVerifyTokenOTP = await verifyUserOtp({ userId: dataUserDB, otp: dataUser.token });
-
-    if (resultVerifyTokenOTP.valid === false)
-      return res.status(422).json({
-        status: "error",
-        code: 422,
-        message: resultVerifyTokenOTP.reason,
-        data: {
-          otp: false,
-        },
-      });
-
-    res.status(200).json({
-      status: "success",
-      code: 200,
-      message: "OTP change password success",
-      data: {
-        otp: true,
-        _id: dataUserDB?._id,
-        username: dataUserDB?.username,
-        email: dataUserDB?.email,
-        profile: dataUserDB?.profile,
-      },
-    });
-  } catch (error) {
-    next(new AuthError(`Error request otp change password: ${error.message}`, 400));
-  }
-});
-
-authRoute.post(`/verify-old-password`, userByID, async (req, res, next) => {
-  n;
-  try {
-    const dataUserDB = req.dataUserDB;
-    const { dataUser } = req.body;
-
-    if (!dataUser._id || !dataUser.username || !dataUser.email || !dataUser.otp || !dataUser.profile)
-      return res.status(404).json({
-        status: "error",
-        code: 404,
-        message: "Data not found",
-        data: {
-          otp: false,
-        },
-      });
-
-    if (dataUser.newPassword !== dataUserDB.password)
-      return res.status(401).json({
-        status: "error",
-        code: 401,
-        message: "Old password is incorrect.",
-        data: {
-          otp: false,
-        },
-      });
-
-    res.status(200).json({
-      status: "success",
-      code: 200,
-      message: "Verify old password success",
-      data: {
-        _id: dataUserDB?._id,
-        username: dataUserDB?.username,
-        email: dataUserDB?.email,
-        profile: dataUserDB?.profile,
-      },
-    });
-  } catch (error) {
-    next(new AuthError(`Error verify old password: ${error.message}`, 400));
-  }
-});
-
 authRoute.post(`/change-password`, userByID, async (req, res, next) => {
   try {
     const dataUserDB = req.dataUserDB;
     const { dataUser } = req.body;
 
-    if (!dataUser._id || !dataUser.username || !dataUser.email || !dataUser.otp || !dataUser.profile)
-      return res.status(404).json({
+    if (!dataUser._id || !dataUser.username || !dataUser.email || !dataUser.profile || !dataUser.newPassword)
+      return res.status(400).json({
         status: "error",
-        code: 404,
+        code: 400,
         message: "Data not found",
-        data: {
-          otp: false,
-        },
+        data: {},
       });
 
     const resultChangePassword = await User.findOneAndUpdate(
@@ -696,7 +599,7 @@ authRoute.post(`/change-password`, userByID, async (req, res, next) => {
       {
         new: true,
         runValidators: true,
-      }
+      },
     );
 
     if (!resultChangePassword)
