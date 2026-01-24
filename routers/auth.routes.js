@@ -71,7 +71,7 @@ authRoute.get(`/google/callback`, async (req, res, next) => {
       path: "/",
     });
 
-    res.redirect(process.env.REDIRECT_LOGIN_GOOGLE + `/home`);
+    res.redirect(process.env.REDIRECT_LOGIN_GOOGLE + `/dashboard`);
   } catch (error) {
     next(new AuthError(`Error callback google ${error.message}`, 500));
   }
@@ -666,7 +666,7 @@ authRoute.get(`/refresh`, verifyToken, (req, res) => {
   }
 });
 
-authRoute.get(`/logout`, verifyToken, userByID, (req, res) => {
+authRoute.post(`/logout`, verifyToken, userByID, (req, res) => {
   try {
     res.clearCookie("refresh-token", {
       httpOnly: true,
